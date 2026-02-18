@@ -107,7 +107,7 @@ async def main():
         if config.api_enabled:
             from .api import create_app
 
-            api_app = create_app(config, notifier)
+            api_app = create_app(config, notifier, monitoring_service)
             api_task = asyncio.create_task(run_api_server(api_app, config.api_host, config.api_port))
             logger.info(f"API server listening on {config.api_host}:{config.api_port}")
 

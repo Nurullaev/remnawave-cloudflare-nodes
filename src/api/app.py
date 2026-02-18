@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 
 from ..config import Config
@@ -14,6 +16,9 @@ from ..utils.logger import get_logger
 from .auth import make_auth_dependency
 from .models import ConfigPatch, DomainIn, ZoneIn, ZonePatch
 
+if TYPE_CHECKING:
+    from ..monitoring_service import MonitoringService
+
 logger = get_logger(__name__)
 
 
@@ -27,7 +32,7 @@ def _client_ip(request: Request) -> str:
     return "unknown"
 
 
-def create_app(config: Config, notifier: TelegramNotifier) -> FastAPI:
+def create_app(config: Config, notifier: TelegramNotifier, monitoring_service: "MonitoringService") -> FastAPI:
     app = FastAPI(
         title="Remnawave Cloudflare DNS Monitor",
         version="1.0.0",
@@ -113,10 +118,11 @@ def create_app(config: Config, notifier: TelegramNotifier) -> FastAPI:
     @app.delete("/api/config/domains/{domain}", dependencies=[Depends(auth)])
     async def remove_domain(request: Request, domain: str):
         ip = _client_ip(request)
-        try:
-            config.remove_domain(domain)
-        except ValueError as e:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        if not any(d.get("domain") == domain for d in config.domains):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Domain '{domain}' not found")
+        # Cleanup DNS before removing from config so zones are still readable
+        await monitoring_service.cleanup_domain(domain)
+        config.remove_domain(domain)
         logger.info(f"API: removed domain '{domain}' [from {ip}]")
         notifier.notify_api_domain_removed(ApiDomainRemoved(domain=domain, client_ip=ip))
         return {"status": "ok"}
@@ -163,10 +169,12 @@ def create_app(config: Config, notifier: TelegramNotifier) -> FastAPI:
     @app.delete("/api/config/domains/{domain}/zones/{zone_name}", dependencies=[Depends(auth)])
     async def remove_zone(request: Request, domain: str, zone_name: str):
         ip = _client_ip(request)
+        # Validate before cleanup
         try:
             config.remove_zone(domain, zone_name)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        await monitoring_service.cleanup_zone(domain, zone_name)
         logger.info(f"API: removed zone '{zone_name}' from '{domain}' [from {ip}]")
         notifier.notify_api_zone_removed(ApiZoneRemoved(domain=domain, zone_name=zone_name, client_ip=ip))
         return {"status": "ok"}

@@ -183,6 +183,24 @@ class MonitoringService:
 
             self._previous_node_states[node.address] = curr_healthy
 
+    async def cleanup_zone(self, domain: str, zone_name: str) -> None:
+        zone_id = await self._get_zone_id(domain)
+        if not zone_id:
+            self.logger.warning(f"Cannot cleanup {zone_name}.{domain}: zone_id not found")
+            return
+        await self.dns_manager.cleanup_zone(zone_id, zone_name, domain)
+
+    async def cleanup_domain(self, domain: str) -> None:
+        zone_id = await self._get_zone_id(domain)
+        if not zone_id:
+            self.logger.warning(f"Cannot cleanup domain {domain}: zone_id not found")
+            return
+        for domain_conf in self.config.domains:
+            if domain_conf.get("domain") == domain:
+                for zone in domain_conf.get("zones", []):
+                    await self.dns_manager.cleanup_zone(zone_id, zone["name"], domain)
+                return
+
     def _check_critical_state(self, configured_nodes, unhealthy_nodes) -> None:
         if not self.notifier or not self.config.telegram_notify_critical:
             return
