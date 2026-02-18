@@ -159,7 +159,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./config.yml:/app/config.yml:ro
+      - ./config.yml:/app/config.yml
       - ./logs:/app/logs
     networks:
       - remnawave-cloudflare-nodes

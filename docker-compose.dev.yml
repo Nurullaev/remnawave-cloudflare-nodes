@@ -9,7 +9,7 @@ services:
       - .env
     volumes:
       - ./src:/app/src:ro
-      - ./config.yml:/app/config.yml:ro
+      - ./config.yml:/app/config.yml
       - ./logs:/app/logs
     logging:
       driver: json-file
