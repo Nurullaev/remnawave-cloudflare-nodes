@@ -131,6 +131,17 @@ class Config:
     def telegram_notify_critical(self) -> bool:
         return self.get("telegram.notify.critical", True)
 
+    def validate(self) -> None:
+        missing = []
+        if not self.remnawave_url:
+            missing.append("REMNAWAVE_API_URL")
+        if not self.remnawave_api_key:
+            missing.append("REMNAWAVE_API_KEY")
+        if not self.cloudflare_token:
+            missing.append("CLOUDFLARE_API_TOKEN")
+        if missing:
+            raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+
     def get_all_zones(self) -> list:
         zones = []
         for domain_config in self.domains:

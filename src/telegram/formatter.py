@@ -3,7 +3,7 @@ from typing import Optional
 
 from fluent.runtime import FluentLocalization, FluentResourceLoader
 
-from .events import NodeStateChange, NodeStats, DNSChange, DNSError, CriticalState, HealthCheckError
+from .events import NodeStateChange, NodeStats, DNSChange, DNSError, CriticalState, CriticalStateRecovered, HealthCheckError
 from ..utils.logger import get_logger
 
 
@@ -73,6 +73,11 @@ class MessageFormatter:
     def format_critical_state(self, state: CriticalState) -> str:
         return self._l10n.format_value(
             "all-nodes-down", {"total": state.total_nodes, "nodes": ", ".join(state.down_nodes)}
+        )
+
+    def format_critical_recovered(self, state: CriticalStateRecovered) -> str:
+        return self._l10n.format_value(
+            "all-nodes-recovered", {"total": state.total_nodes, "online": state.online_nodes}
         )
 
     def format_health_check_error(self, error: HealthCheckError) -> str:

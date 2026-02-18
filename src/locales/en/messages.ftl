@@ -38,3 +38,7 @@ all-nodes-down = <b>🔴 CRITICAL: All Nodes Down</b>
     Affected: { $nodes }
 
     DNS records have been cleared. Immediate attention required.
+
+all-nodes-recovered = <b>🟢 Recovered: Nodes Back Online</b>
+    { $online } of { $total } nodes are now reachable.
+    DNS records have been restored.

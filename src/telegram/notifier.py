@@ -6,7 +6,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramRetryAfter
 
-from .events import NodeStateChange, DNSChange, DNSError, CriticalState, HealthCheckError
+from .events import NodeStateChange, DNSChange, DNSError, CriticalState, CriticalStateRecovered, HealthCheckError
 from .formatter import MessageFormatter
 from ..utils.logger import get_logger
 
@@ -65,12 +65,9 @@ class TelegramNotifier:
         self._running = False
 
         try:
-            timeout_task = asyncio.create_task(asyncio.sleep(5.0))
-            while not self._queue.empty() and not timeout_task.done():
-                await asyncio.sleep(0.1)
-            timeout_task.cancel()
-        except asyncio.CancelledError:
-            pass
+            await asyncio.wait_for(self._queue.join(), timeout=5.0)
+        except asyncio.TimeoutError:
+            self.logger.warning("Timed out waiting for notification queue to drain")
 
         if self._worker_task:
             self._worker_task.cancel()
@@ -116,13 +113,19 @@ class TelegramNotifier:
                 await asyncio.sleep(e.retry_after)
             except TelegramAPIError as e:
                 attempt += 1
+                if attempt >= self.retry_attempts:
+                    self.logger.error(f"Giving up on notification after {attempt} attempts: {e}")
+                    return
                 delay = min(self.retry_delay * attempt, 30.0)
-                self.logger.warning(f"Telegram API error (attempt {attempt}), retrying in {delay}s: {e}")
+                self.logger.warning(f"Telegram API error (attempt {attempt}/{self.retry_attempts}), retrying in {delay}s: {e}")
                 await asyncio.sleep(delay)
             except Exception as e:
                 attempt += 1
+                if attempt >= self.retry_attempts:
+                    self.logger.error(f"Giving up on notification after {attempt} attempts: {e}")
+                    return
                 delay = min(self.retry_delay * attempt, 30.0)
-                self.logger.error(f"Failed to send notification (attempt {attempt}), retrying in {delay}s: {e}")
+                self.logger.error(f"Failed to send notification (attempt {attempt}/{self.retry_attempts}), retrying in {delay}s: {e}")
                 await asyncio.sleep(delay)
 
     def _enqueue(self, message: str) -> None:
@@ -156,6 +159,12 @@ class TelegramNotifier:
         if not self.enabled:
             return
         message = self._formatter.format_critical_state(state)
+        self._enqueue(message)
+
+    def notify_critical_recovered(self, state: CriticalStateRecovered) -> None:
+        if not self.enabled:
+            return
+        message = self._formatter.format_critical_recovered(state)
         self._enqueue(message)
 
     def notify_health_check_error(self, error: HealthCheckError) -> None:

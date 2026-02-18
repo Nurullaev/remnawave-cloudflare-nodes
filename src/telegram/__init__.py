@@ -5,6 +5,7 @@ from .events import (
     DNSChange,
     DNSError,
     CriticalState,
+    CriticalStateRecovered,
     HealthCheckError,
 )
 from .formatter import MessageFormatter
@@ -16,6 +17,7 @@ __all__ = [
     "DNSChange",
     "DNSError",
     "CriticalState",
+    "CriticalStateRecovered",
     "HealthCheckError",
     "MessageFormatter",
 ]

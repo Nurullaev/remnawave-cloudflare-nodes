@@ -32,24 +32,26 @@ class MonitoringService:
         self.logger.info("Initializing zones")
 
         current_domain = None
+        current_zone_id: Optional[str] = None
         for zone in self.config.get_all_zones():
             domain = zone["domain"]
 
             if domain != current_domain:
-                zone_id = await self._get_zone_id(domain)
-                if not zone_id:
+                current_zone_id = await self._get_zone_id(domain)
+                current_domain = domain
+                if not current_zone_id:
                     self.logger.warning(f"Could not find zone_id for domain {domain}")
                     continue
-                self.logger.info(f"Domain: {domain}, Zone ID: {zone_id}")
-                current_domain = domain
+                self.logger.info(f"Domain: {domain}, Zone ID: {current_zone_id}")
+
+            if not current_zone_id:
+                continue
 
             full_domain = f"{zone['name']}.{domain}"
             self.logger.info(f"  Zone: {full_domain}, TTL: {zone['ttl']}, Proxied: {zone['proxied']}")
-
             self.logger.info(f"  Configured IPs: {', '.join(zone['ips'])}")
 
-            zone_id = await self._get_zone_id(domain)
-            existing_records = await self.cloudflare_client.get_dns_records(zone_id, name=full_domain, record_type="A")
+            existing_records = await self.cloudflare_client.get_dns_records(current_zone_id, name=full_domain, record_type="A")
             if existing_records:
                 existing_ips = [record["content"] for record in existing_records]
                 self.logger.info(f"  Existing DNS records: {', '.join(existing_ips)}")
@@ -192,6 +194,13 @@ class MonitoringService:
 
             self.notifier.notify_critical_state(
                 CriticalState(total_nodes=len(configured_nodes), down_nodes=[n.address for n in unhealthy_nodes])
+            )
+        elif not all_down and self._previous_all_down:
+            from .telegram import CriticalStateRecovered
+
+            online_count = len(configured_nodes) - len(unhealthy_nodes)
+            self.notifier.notify_critical_recovered(
+                CriticalStateRecovered(total_nodes=len(configured_nodes), online_nodes=online_count)
             )
 
         self._previous_all_down = all_down

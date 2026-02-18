@@ -35,13 +35,13 @@ async def run_monitoring_loop(service: MonitoringService, interval: int, logger)
             logger.info("Received keyboard interrupt, stopping...")
             break
         except Exception as e:
-            logger.error(f"Error in monitoring loop: {e}", exc_info=True)
-            logger.info(f"Retrying in {interval} seconds...")
+            logger.info(f"Retrying in {interval} seconds after error: {e}")
             await asyncio.sleep(interval)
 
 
 async def main():
     config = Config()
+    config.validate()
 
     logger = setup_logger(name="remnawave-cloudflare-monitor", level=config.log_level, log_file="logs/app.log")
 

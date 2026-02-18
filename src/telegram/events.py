@@ -43,5 +43,11 @@ class CriticalState:
 
 
 @dataclass
+class CriticalStateRecovered:
+    total_nodes: int
+    online_nodes: int
+
+
+@dataclass
 class HealthCheckError:
     error_message: str

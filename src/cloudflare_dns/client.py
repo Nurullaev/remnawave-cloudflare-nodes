@@ -8,19 +8,22 @@ from ..utils.logger import get_logger
 
 
 class CloudflareClient:
-    def __init__(self, api_token: str, rate_limit_delay: float = 0.25, retry_delay: float = 1.0):
+    def __init__(self, api_token: str, rate_limit_delay: float = 0.25, retry_delay: float = 1.0, max_retries: int = 5):
         self.api_token = api_token
         self.logger = get_logger(__name__)
         self.cf = AsyncCloudflare(api_token=api_token)
         self.rate_limit_delay = rate_limit_delay
         self.retry_delay = retry_delay
+        self.max_retries = max_retries
         self._last_request_time: float = 0
+        self._rate_limit_lock = asyncio.Lock()
 
     async def _rate_limit(self) -> None:
-        elapsed = time.monotonic() - self._last_request_time
-        if elapsed < self.rate_limit_delay:
-            await asyncio.sleep(self.rate_limit_delay - elapsed)
-        self._last_request_time = time.monotonic()
+        async with self._rate_limit_lock:
+            elapsed = time.monotonic() - self._last_request_time
+            if elapsed < self.rate_limit_delay:
+                await asyncio.sleep(self.rate_limit_delay - elapsed)
+            self._last_request_time = time.monotonic()
 
     async def _retry_delay(self, attempt: int) -> None:
         delay = min(self.retry_delay * attempt, 30.0)
@@ -53,7 +56,9 @@ class CloudflareClient:
 
             except Exception as e:
                 attempt += 1
-                self.logger.error(f"Error fetching DNS records (attempt {attempt}): {e}")
+                self.logger.error(f"Error fetching DNS records (attempt {attempt}/{self.max_retries}): {e}")
+                if attempt >= self.max_retries:
+                    raise
                 await self._retry_delay(attempt)
 
     async def create_dns_record(
@@ -81,7 +86,9 @@ class CloudflareClient:
                 if status_code and 400 <= status_code < 500:
                     raise
                 attempt += 1
-                self.logger.error(f"Error creating DNS record (attempt {attempt}): {e}")
+                self.logger.error(f"Error creating DNS record (attempt {attempt}/{self.max_retries}): {e}")
+                if attempt >= self.max_retries:
+                    raise
                 await self._retry_delay(attempt)
 
     async def update_dns_record(
@@ -119,7 +126,9 @@ class CloudflareClient:
 
             except Exception as e:
                 attempt += 1
-                self.logger.error(f"Error updating DNS record (attempt {attempt}): {e}")
+                self.logger.error(f"Error updating DNS record (attempt {attempt}/{self.max_retries}): {e}")
+                if attempt >= self.max_retries:
+                    raise
                 await self._retry_delay(attempt)
 
     async def delete_dns_record(self, zone_id: str, record_id: str) -> None:
@@ -133,7 +142,9 @@ class CloudflareClient:
 
             except Exception as e:
                 attempt += 1
-                self.logger.error(f"Error deleting DNS record (attempt {attempt}): {e}")
+                self.logger.error(f"Error deleting DNS record (attempt {attempt}/{self.max_retries}): {e}")
+                if attempt >= self.max_retries:
+                    raise
                 await self._retry_delay(attempt)
 
     async def get_record_by_name_and_content(
@@ -160,5 +171,7 @@ class CloudflareClient:
 
             except Exception as e:
                 attempt += 1
-                self.logger.error(f"Error fetching zone for domain {domain} (attempt {attempt}): {e}")
+                self.logger.error(f"Error fetching zone for domain {domain} (attempt {attempt}/{self.max_retries}): {e}")
+                if attempt >= self.max_retries:
+                    raise
                 await self._retry_delay(attempt)
