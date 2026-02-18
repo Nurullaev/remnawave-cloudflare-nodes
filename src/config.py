@@ -137,6 +137,10 @@ class Config:
     def telegram_notify_critical(self) -> bool:
         return self.get("telegram.notify.critical", True)
 
+    @property
+    def telegram_notify_api_changes(self) -> bool:
+        return self.get("telegram.notify.api_changes", True)
+
     # --- Config mutation methods ---
 
     def update_check_interval(self, interval: int) -> None:

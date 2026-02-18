@@ -2,6 +2,8 @@
 service-started = <b>🚀 Service Started</b>
     Monitoring is now active.
 
+    { $summary }
+
 service-stopped = <b>🛑 Service Stopped</b>
     Monitoring has been shut down.
 
@@ -42,3 +44,29 @@ all-nodes-down = <b>🔴 CRITICAL: All Nodes Down</b>
 all-nodes-recovered = <b>🟢 Recovered: Nodes Back Online</b>
     { $online } of { $total } nodes are now reachable.
     DNS records have been restored.
+
+# API events
+api-config-updated = <b>⚙️ Config Updated via API</b>
+    { $changes }
+    From: { $ip }
+
+api-domain-added = <b>➕ Domain Added via API</b>
+    { $domain } ({ $zones } zone(s))
+    From: { $ip }
+
+api-domain-removed = <b>➖ Domain Removed via API</b>
+    { $domain }
+    From: { $ip }
+
+api-zone-added = <b>➕ Zone Added via API</b>
+    { $zone }.{ $domain } ({ $ips } IP(s))
+    From: { $ip }
+
+api-zone-updated = <b>⚙️ Zone Updated via API</b>
+    { $zone }.{ $domain }
+    { $changes }
+    From: { $ip }
+
+api-zone-removed = <b>➖ Zone Removed via API</b>
+    { $zone }.{ $domain }
+    From: { $ip }

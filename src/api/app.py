@@ -1,6 +1,15 @@
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 
 from ..config import Config
+from ..telegram import (
+    TelegramNotifier,
+    ApiConfigUpdated,
+    ApiDomainAdded,
+    ApiDomainRemoved,
+    ApiZoneAdded,
+    ApiZoneUpdated,
+    ApiZoneRemoved,
+)
 from ..utils.logger import get_logger
 from .auth import make_auth_dependency
 from .models import ConfigPatch, DomainIn, ZoneIn, ZonePatch
@@ -18,7 +27,7 @@ def _client_ip(request: Request) -> str:
     return "unknown"
 
 
-def create_app(config: Config) -> FastAPI:
+def create_app(config: Config, notifier: TelegramNotifier) -> FastAPI:
     app = FastAPI(
         title="Remnawave Cloudflare DNS Monitor",
         version="1.0.0",
@@ -43,12 +52,14 @@ def create_app(config: Config) -> FastAPI:
                     "node_changes": config.telegram_notify_node_changes,
                     "errors": config.telegram_notify_errors,
                     "critical": config.telegram_notify_critical,
+                    "api_changes": config.telegram_notify_api_changes,
                 },
             },
         }
 
     @app.patch("/api/config", dependencies=[Depends(auth)])
     async def patch_config(request: Request, body: ConfigPatch):
+        ip = _client_ip(request)
         changes = []
 
         if body.check_interval is not None:
@@ -78,7 +89,8 @@ def create_app(config: Config) -> FastAPI:
                 config.update_telegram(**kwargs)
 
         if changes:
-            logger.info(f"API: updated config [{', '.join(changes)}] [from {_client_ip(request)}]")
+            logger.info(f"API: updated config [{', '.join(changes)}] [from {ip}]")
+            notifier.notify_api_config_updated(ApiConfigUpdated(changes=changes, client_ip=ip))
         return {"status": "ok"}
 
     @app.get("/api/config/domains", dependencies=[Depends(auth)])
@@ -89,20 +101,24 @@ def create_app(config: Config) -> FastAPI:
 
     @app.post("/api/config/domains", status_code=status.HTTP_201_CREATED, dependencies=[Depends(auth)])
     async def add_domain(request: Request, body: DomainIn):
+        ip = _client_ip(request)
         try:
             config.add_domain(domain=body.domain, zones=[z.model_dump() for z in body.zones])
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
-        logger.info(f"API: added domain '{body.domain}' with {len(body.zones)} zone(s) [from {_client_ip(request)}]")
+        logger.info(f"API: added domain '{body.domain}' with {len(body.zones)} zone(s) [from {ip}]")
+        notifier.notify_api_domain_added(ApiDomainAdded(domain=body.domain, zone_count=len(body.zones), client_ip=ip))
         return {"status": "ok"}
 
     @app.delete("/api/config/domains/{domain}", dependencies=[Depends(auth)])
     async def remove_domain(request: Request, domain: str):
+        ip = _client_ip(request)
         try:
             config.remove_domain(domain)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-        logger.info(f"API: removed domain '{domain}' [from {_client_ip(request)}]")
+        logger.info(f"API: removed domain '{domain}' [from {ip}]")
+        notifier.notify_api_domain_removed(ApiDomainRemoved(domain=domain, client_ip=ip))
         return {"status": "ok"}
 
     @app.post(
@@ -111,6 +127,7 @@ def create_app(config: Config) -> FastAPI:
         dependencies=[Depends(auth)],
     )
     async def add_zone(request: Request, domain: str, body: ZoneIn):
+        ip = _client_ip(request)
         try:
             config.add_zone(domain, body.model_dump())
         except ValueError as e:
@@ -119,12 +136,16 @@ def create_app(config: Config) -> FastAPI:
         logger.info(
             f"API: added zone '{body.name}' to '{domain}' "
             f"[{len(body.ips)} IP(s), ttl={body.ttl}, proxied={body.proxied}] "
-            f"[from {_client_ip(request)}]"
+            f"[from {ip}]"
+        )
+        notifier.notify_api_zone_added(
+            ApiZoneAdded(domain=domain, zone_name=body.name, ip_count=len(body.ips), client_ip=ip)
         )
         return {"status": "ok"}
 
     @app.patch("/api/config/domains/{domain}/zones/{zone_name}", dependencies=[Depends(auth)])
     async def patch_zone(request: Request, domain: str, zone_name: str, body: ZonePatch):
+        ip = _client_ip(request)
         updates = {k: v for k, v in body.model_dump().items() if v is not None}
         if not updates:
             return {"status": "ok"}
@@ -132,17 +153,22 @@ def create_app(config: Config) -> FastAPI:
             config.update_zone(domain, zone_name, **updates)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-        changes = ", ".join(f"{k}={v}" for k, v in updates.items())
-        logger.info(f"API: updated zone '{zone_name}' of '{domain}' [{changes}] [from {_client_ip(request)}]")
+        changes = [f"{k}={v}" for k, v in updates.items()]
+        logger.info(f"API: updated zone '{zone_name}' of '{domain}' [{', '.join(changes)}] [from {ip}]")
+        notifier.notify_api_zone_updated(
+            ApiZoneUpdated(domain=domain, zone_name=zone_name, changes=changes, client_ip=ip)
+        )
         return {"status": "ok"}
 
     @app.delete("/api/config/domains/{domain}/zones/{zone_name}", dependencies=[Depends(auth)])
     async def remove_zone(request: Request, domain: str, zone_name: str):
+        ip = _client_ip(request)
         try:
             config.remove_zone(domain, zone_name)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-        logger.info(f"API: removed zone '{zone_name}' from '{domain}' [from {_client_ip(request)}]")
+        logger.info(f"API: removed zone '{zone_name}' from '{domain}' [from {ip}]")
+        notifier.notify_api_zone_removed(ApiZoneRemoved(domain=domain, zone_name=zone_name, client_ip=ip))
         return {"status": "ok"}
 
     return app

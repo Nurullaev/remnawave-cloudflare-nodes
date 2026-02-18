@@ -3,7 +3,13 @@ from typing import Optional
 
 from fluent.runtime import FluentLocalization, FluentResourceLoader
 
-from .events import NodeStateChange, NodeStats, DNSChange, DNSError, CriticalState, CriticalStateRecovered, HealthCheckError
+from .events import (
+    NodeStateChange, NodeStats, DNSChange, DNSError,
+    CriticalState, CriticalStateRecovered, HealthCheckError,
+    ServiceStarted,
+    ApiConfigUpdated, ApiDomainAdded, ApiDomainRemoved,
+    ApiZoneAdded, ApiZoneUpdated, ApiZoneRemoved,
+)
 from ..utils.logger import get_logger
 
 
@@ -83,8 +89,60 @@ class MessageFormatter:
     def format_health_check_error(self, error: HealthCheckError) -> str:
         return self._l10n.format_value("health-check-error", {"error": error.error_message})
 
-    def format_service_started(self) -> str:
-        return self._l10n.format_value("service-started")
+    def format_service_started(self, event: ServiceStarted) -> str:
+        if self.locale == "ru":
+            domains_label = "📡 Домены"
+            api_label = "🔌 API"
+        else:
+            domains_label = "📡 Domains"
+            api_label = "🔌 API"
+
+        zone_lines = []
+        for domain_conf in event.domains:
+            domain = domain_conf.get("domain", "")
+            for zone in domain_conf.get("zones", []):
+                ip_count = len(zone.get("ips", []))
+                zone_lines.append(f"• {zone['name']}.{domain} — {ip_count} IP(s)")
+
+        domains_str = "\n".join(zone_lines) if zone_lines else "—"
+        summary = f"{domains_label}:\n{domains_str}"
+
+        if event.api_enabled:
+            summary += f"\n\n{api_label}: {event.api_host}:{event.api_port}"
+
+        return self._l10n.format_value("service-started", {"summary": summary})
 
     def format_service_stopped(self) -> str:
         return self._l10n.format_value("service-stopped")
+
+    def format_api_config_updated(self, event: ApiConfigUpdated) -> str:
+        return self._l10n.format_value(
+            "api-config-updated", {"changes": ", ".join(event.changes), "ip": event.client_ip}
+        )
+
+    def format_api_domain_added(self, event: ApiDomainAdded) -> str:
+        return self._l10n.format_value(
+            "api-domain-added", {"domain": event.domain, "zones": event.zone_count, "ip": event.client_ip}
+        )
+
+    def format_api_domain_removed(self, event: ApiDomainRemoved) -> str:
+        return self._l10n.format_value(
+            "api-domain-removed", {"domain": event.domain, "ip": event.client_ip}
+        )
+
+    def format_api_zone_added(self, event: ApiZoneAdded) -> str:
+        return self._l10n.format_value(
+            "api-zone-added",
+            {"zone": event.zone_name, "domain": event.domain, "ips": event.ip_count, "ip": event.client_ip},
+        )
+
+    def format_api_zone_updated(self, event: ApiZoneUpdated) -> str:
+        return self._l10n.format_value(
+            "api-zone-updated",
+            {"zone": event.zone_name, "domain": event.domain, "changes": ", ".join(event.changes), "ip": event.client_ip},
+        )
+
+    def format_api_zone_removed(self, event: ApiZoneRemoved) -> str:
+        return self._l10n.format_value(
+            "api-zone-removed", {"zone": event.zone_name, "domain": event.domain, "ip": event.client_ip}
+        )

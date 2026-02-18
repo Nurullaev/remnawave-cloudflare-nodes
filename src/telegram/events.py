@@ -51,3 +51,55 @@ class CriticalStateRecovered:
 @dataclass
 class HealthCheckError:
     error_message: str
+
+
+@dataclass
+class ServiceStarted:
+    domains: List[dict]
+    api_enabled: bool = False
+    api_host: str = ""
+    api_port: int = 0
+
+
+# API events
+
+@dataclass
+class ApiConfigUpdated:
+    changes: List[str]
+    client_ip: str
+
+
+@dataclass
+class ApiDomainAdded:
+    domain: str
+    zone_count: int
+    client_ip: str
+
+
+@dataclass
+class ApiDomainRemoved:
+    domain: str
+    client_ip: str
+
+
+@dataclass
+class ApiZoneAdded:
+    domain: str
+    zone_name: str
+    ip_count: int
+    client_ip: str
+
+
+@dataclass
+class ApiZoneUpdated:
+    domain: str
+    zone_name: str
+    changes: List[str]
+    client_ip: str
+
+
+@dataclass
+class ApiZoneRemoved:
+    domain: str
+    zone_name: str
+    client_ip: str

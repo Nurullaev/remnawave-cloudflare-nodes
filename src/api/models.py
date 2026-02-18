@@ -25,6 +25,7 @@ class TelegramNotifyPatch(BaseModel):
     node_changes: Optional[bool] = None
     errors: Optional[bool] = None
     critical: Optional[bool] = None
+    api_changes: Optional[bool] = None
 
 
 class TelegramPatch(BaseModel):

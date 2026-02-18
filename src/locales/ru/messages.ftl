@@ -2,6 +2,8 @@
 service-started = <b>🚀 Сервис запущен</b>
     Мониторинг активен.
 
+    { $summary }
+
 service-stopped = <b>🛑 Сервис остановлен</b>
     Мониторинг выключен.
 
@@ -42,3 +44,29 @@ all-nodes-down = <b>🔴 КРИТИЧНО: Все ноды недоступны<
 all-nodes-recovered = <b>🟢 Восстановление: Ноды снова онлайн</b>
     { $online } из { $total } нод снова доступны.
     DNS записи восстановлены.
+
+# События API
+api-config-updated = <b>⚙️ Конфигурация обновлена через API</b>
+    { $changes }
+    От: { $ip }
+
+api-domain-added = <b>➕ Домен добавлен через API</b>
+    { $domain } ({ $zones } зон(а))
+    От: { $ip }
+
+api-domain-removed = <b>➖ Домен удален через API</b>
+    { $domain }
+    От: { $ip }
+
+api-zone-added = <b>➕ Зона добавлена через API</b>
+    { $zone }.{ $domain } ({ $ips } IP)
+    От: { $ip }
+
+api-zone-updated = <b>⚙️ Зона обновлена через API</b>
+    { $zone }.{ $domain }
+    { $changes }
+    От: { $ip }
+
+api-zone-removed = <b>➖ Зона удалена через API</b>
+    { $zone }.{ $domain }
+    От: { $ip }

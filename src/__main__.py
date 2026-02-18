@@ -8,7 +8,7 @@ from .config import Config
 from .remnawave import RemnawaveClient, NodeMonitor
 from .cloudflare_dns import CloudflareClient, DNSManager
 from .monitoring_service import MonitoringService
-from .telegram import TelegramNotifier
+from .telegram import TelegramNotifier, ServiceStarted
 from .utils.logger import setup_logger
 
 
@@ -70,6 +70,7 @@ async def main():
         topic_id=config.telegram_topic_id,
         locale=config.telegram_locale,
         enabled=config.telegram_enabled,
+        notify_api_changes=config.telegram_notify_api_changes,
     )
 
     cloudflare_client = CloudflareClient(api_token=config.cloudflare_token)
@@ -92,14 +93,21 @@ async def main():
 
     try:
         await notifier.start()
-        notifier.notify_service_started()
+        notifier.notify_service_started(
+            ServiceStarted(
+                domains=config.domains,
+                api_enabled=config.api_enabled,
+                api_host=config.api_host,
+                api_port=config.api_port,
+            )
+        )
 
         await monitoring_service.initialize_and_print_zones()
 
         if config.api_enabled:
             from .api import create_app
 
-            api_app = create_app(config)
+            api_app = create_app(config, notifier)
             api_task = asyncio.create_task(run_api_server(api_app, config.api_host, config.api_port))
             logger.info(f"API server listening on {config.api_host}:{config.api_port}")
 

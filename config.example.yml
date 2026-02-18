@@ -39,3 +39,4 @@ telegram:
     dns_changes: true   # DNS record changes
     errors: true        # Error alerts
     critical: true      # All nodes down alert
+    api_changes: true   # HTTP API config changes
