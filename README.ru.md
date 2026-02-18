@@ -104,6 +104,7 @@ api:
   enabled: false
   host: "0.0.0.0"
   port: 8741
+  docs: false
 ```
 
 ### Параметры
@@ -277,8 +278,9 @@ API_TOKEN=<сгенерированный токен>
 ```yaml
 api:
   enabled: true
-  host: "127.0.0.1"
+  host: "0.0.0.0"
   port: 8741
+  docs: false
 ```
 
 ### Reverse proxy

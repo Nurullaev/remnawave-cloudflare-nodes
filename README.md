@@ -108,6 +108,7 @@ api:
   enabled: false
   host: "0.0.0.0"
   port: 8741
+  docs: false
 ```
 
 ### Configuration Reference
@@ -317,6 +318,7 @@ api:
   enabled: true
   host: "0.0.0.0"
   port: 8741
+  docs: false
 ```
 
 ### Reverse proxy
