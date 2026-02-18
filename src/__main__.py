@@ -2,6 +2,8 @@ import asyncio
 import signal
 import sys
 
+import uvicorn
+
 from .config import Config
 from .remnawave import RemnawaveClient, NodeMonitor
 from .cloudflare_dns import CloudflareClient, DNSManager
@@ -16,6 +18,13 @@ class GracefulExit(SystemExit):
 
 def raise_graceful_exit(signum, frame):
     raise GracefulExit()
+
+
+async def run_api_server(app, host: str, port: int) -> None:
+    server_config = uvicorn.Config(app, host=host, port=port, log_level="warning")
+    server = uvicorn.Server(server_config)
+    server.install_signal_handlers = lambda: None  # our signal handlers manage shutdown
+    await server.serve()
 
 
 async def run_monitoring_loop(service: MonitoringService, interval: int, logger):
@@ -79,11 +88,20 @@ async def main():
         notifier=notifier,
     )
 
+    api_task = None
+
     try:
         await notifier.start()
         notifier.notify_service_started()
 
         await monitoring_service.initialize_and_print_zones()
+
+        if config.api_enabled:
+            from .api import create_app
+
+            api_app = create_app(config)
+            api_task = asyncio.create_task(run_api_server(api_app, config.api_host, config.api_port))
+            logger.info(f"API server listening on {config.api_host}:{config.api_port}")
 
         await run_monitoring_loop(service=monitoring_service, interval=config.check_interval, logger=logger)
     except (GracefulExit, KeyboardInterrupt):
@@ -92,6 +110,12 @@ async def main():
         logger.error(f"Fatal error: {e}", exc_info=True)
         sys.exit(1)
     finally:
+        if api_task:
+            api_task.cancel()
+            try:
+                await api_task
+            except asyncio.CancelledError:
+                pass
         notifier.notify_service_stopped()
         await notifier.stop()
 

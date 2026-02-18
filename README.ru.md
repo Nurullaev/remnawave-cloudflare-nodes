@@ -14,7 +14,8 @@
 
 [English](README.md) | Русский
 
-Сервис для автоматического управления DNS-записями Cloudflare в зависимости от состояния нод Remnawave (https://docs.rw).
+Сервис для автоматического управления DNS-записями Cloudflare в зависимости от состояния нод
+Remnawave (https://docs.rw).
 
 ## Возможности
 
@@ -23,8 +24,9 @@
 - **Автоопределение зон** - Получение Zone ID по имени домена
 - **Мультидоменность** - Поддержка нескольких доменов и зон
 - **Telegram-уведомления** - Оповещения об изменении статуса нод, DNS и критических событиях
+- **HTTP API** - Управление конфигурацией в реальном времени через защищенный REST API
 - **Гибкая настройка** - Настраиваемые интервалы проверок
-- **Docker** - Готовый образ для быстрого развёртывания
+- **Docker** - Готовый образ для быстрого развертывания
 
 ## Требования
 
@@ -55,23 +57,25 @@ TELEGRAM_TOPIC_ID=
 # Часовой пояс и формат времени
 TIMEZONE=UTC
 TIME_FORMAT="%d.%m.%Y %H:%M:%S"
+
+# Токен API-сервера (обязателен при api.enabled: true в config.yml)
+# Сгенерировать: openssl rand -hex 32
+API_TOKEN=
 ```
 
 Скопируйте [`config.example.yml`](config.example.yml) в `config.yml`:
 
 ```yaml
 remnawave:
-  # Health check interval in seconds
   check-interval: 30
 
-# Domains and DNS zones to manage
 domains:
   - domain: example1.com
     zones:
-      - name: s1          # Creates s1.example1.com
-        ttl: 60           # Record TTL in seconds
-        proxied: false    # Cloudflare proxy (orange cloud)
-        ips:              # Node IPs to monitor
+      - name: s1
+        ttl: 60
+        proxied: false
+        ips:
           - 1.2.3.4
           - 5.6.7.8
 
@@ -89,28 +93,51 @@ logging:
 
 telegram:
   enabled: false
-  locale: en  # en, ru
+  locale: ru  # en, ru
   notify:
-    node_changes: true  # Node online/offline
-    dns_changes: true   # DNS record changes
-    errors: true        # Error alerts
-    critical: true      # All nodes down alert
+    node_changes: true
+    dns_changes: true
+    errors: true
+    critical: true
+
+api:
+  enabled: false
+  host: "0.0.0.0"
+  port: 8741
 ```
 
 ### Параметры
 
-| Переменная             | Описание                                   | По умолчанию      | Обязательно |
-|------------------------|--------------------------------------------|-------------------|-------------|
-| `REMNAWAVE_API_URL`    | Адрес панели Remnawave                     | -                 | Да          |
-| `REMNAWAVE_API_KEY`    | API токен Remnawave                        | -                 | Да          |
-| `CLOUDFLARE_API_TOKEN` | API токен Cloudflare (DNS Edit)            | -                 | Да          |
-| `TELEGRAM_BOT_TOKEN`   | Токен бота (@BotFather)                    | -                 | Нет         |
-| `TELEGRAM_CHAT_ID`     | ID чата для уведомлений                    | -                 | Нет         |
-| `TELEGRAM_TOPIC_ID`    | ID топика (для форумов)                    | -                 | Нет         |
-| `TIMEZONE`             | Часовой пояс                               | UTC               | Нет         |
-| `TIME_FORMAT`          | Формат времени                             | %d.%m.%Y %H:%M:%S | Нет         |
-| `check-interval`       | Интервал проверки (сек)                    | 30                | Нет         |
-| `logging.level`        | Уровень логов                              | INFO              | Нет         |
+#### Переменные окружения (.env)
+
+| Переменная             | Описание                          | По умолчанию        | Обязательно        |
+|------------------------|-----------------------------------|---------------------|--------------------|
+| `REMNAWAVE_API_URL`    | Адрес панели Remnawave            | -                   | Да                 |
+| `REMNAWAVE_API_KEY`    | API токен Remnawave               | -                   | Да                 |
+| `CLOUDFLARE_API_TOKEN` | API токен Cloudflare (DNS Edit)   | -                   | Да                 |
+| `TELEGRAM_BOT_TOKEN`   | Токен бота (@BotFather)           | -                   | Нет                |
+| `TELEGRAM_CHAT_ID`     | ID чата для уведомлений           | -                   | Нет                |
+| `TELEGRAM_TOPIC_ID`    | ID топика (для форумов)           | -                   | Нет                |
+| `TIMEZONE`             | Часовой пояс                      | `UTC`               | Нет                |
+| `TIME_FORMAT`          | Формат времени                    | `%d.%m.%Y %H:%M:%S` | Нет                |
+| `API_TOKEN`            | Токен API — строго 64 символа hex | -                   | При включенном API |
+
+#### config.yml
+
+| Ключ                           | Описание                                         | По умолчанию | Обязательно |
+|--------------------------------|--------------------------------------------------|--------------|-------------|
+| `remnawave.check-interval`     | Интервал проверки (сек)                          | `30`         | Нет         |
+| `logging.level`                | Уровень логов (`DEBUG` `INFO` `WARNING` `ERROR`) | `INFO`       | Нет         |
+| `telegram.enabled`             | Включить Telegram-уведомления                    | `false`      | Нет         |
+| `telegram.locale`              | Язык уведомлений (`en`, `ru`)                    | `en`         | Нет         |
+| `telegram.notify.node_changes` | Уведомления об изменении статуса нод             | `true`       | Нет         |
+| `telegram.notify.dns_changes`  | Уведомления об изменениях DNS                    | `true`       | Нет         |
+| `telegram.notify.errors`       | Уведомления об ошибках                           | `true`       | Нет         |
+| `telegram.notify.critical`     | Уведомление при падении всех нод                 | `true`       | Нет         |
+| `api.enabled`                  | Включить HTTP API                                | `false`      | Нет         |
+| `api.host`                     | Адрес привязки API-сервера                       | `0.0.0.0`    | Нет         |
+| `api.port`                     | Порт API-сервера                                 | `8741`       | Нет         |
+| `api.docs`                     | Swagger UI по адресу `/api/docs`                 | `false`      | Нет         |
 
 ## Установка
 
@@ -129,11 +156,13 @@ services:
     volumes:
       - ./config.yml:/app/config.yml:ro
       - ./logs:/app/logs
-    logging:
-      driver: json-file
-      options:
-        max-size: "20m"
-        max-file: "3"
+    networks:
+      - remnawave-cloudflare-nodes
+
+networks:
+  remnawave-cloudflare-nodes:
+    name: remnawave-cloudflare-nodes
+    driver: bridge
 ```
 
 2. Настройте `.env`:
@@ -169,13 +198,13 @@ python -m src
 1. **Запуск** - Сервис получает список нод из Remnawave и определяет Zone ID в Cloudflare
 
 2. **Проверка состояния** - Нода считается рабочей, если:
-   - `is_connected = true`
-   - `is_disabled = false`
-   - `xray_version` не пустой
+    - `is_connected = true`
+    - `is_disabled = false`
+    - `xray_version` не пустой
 
 3. **Синхронизация DNS**:
-   - Добавляет A-записи для рабочих нод
-   - Удаляет A-записи для нерабочих нод
+    - Добавляет A-записи для рабочих нод
+    - Удаляет A-записи для нерабочих нод
 
 4. **Цикл** - Проверка повторяется каждые `check-interval` секунд
 
@@ -199,15 +228,16 @@ telegram:
 
 ### Типы уведомлений
 
-| Событие          | Описание            | Пример                                                                          |
-|------------------|---------------------|---------------------------------------------------------------------------------|
-| **Нода онлайн**  | Нода доступна       | ✅ Нода онлайн<br>node-1 (1.2.3.4) доступна.<br>📊 Ноды: 5/6 онлайн, 0 отключено |
-| **Нода офлайн**  | Нода недоступна     | ❌ Нода офлайн<br>node-1 (1.2.3.4) недоступна.<br>Причина: disconnected          |
-| **DNS добавлен** | Добавлена A-запись  | 📝 DNS обновлён<br>Добавлен 1.2.3.4 → s1.example.com                            |
-| **DNS удалён**   | Удалена A-запись    | 🗑️ DNS удалён<br>Удалён 1.2.3.4 из s1.example.com                              |
-| **Критическая**  | Все ноды недоступны | 🔴 КРИТИЧНО: Все ноды недоступны                                                |
-| **Запуск**       | Сервис запущен      | 🚀 Сервис запущен                                                               |
-| **Остановка**    | Сервис остановлен   | 🛑 Сервис остановлен                                                            |
+| Событие            | Описание            | Пример                                                                          |
+|--------------------|---------------------|---------------------------------------------------------------------------------|
+| **Нода онлайн**    | Нода доступна       | ✅ Нода онлайн<br>node-1 (1.2.3.4) доступна.<br>📊 Ноды: 5/6 онлайн, 0 отключено |
+| **Нода офлайн**    | Нода недоступна     | ❌ Нода офлайн<br>node-1 (1.2.3.4) недоступна.<br>Причина: disconnected          |
+| **DNS добавлен**   | Добавлена A-запись  | 📝 DNS обновлен<br>Добавлен 1.2.3.4 → s1.example.com                            |
+| **DNS удален**     | Удалена A-запись    | 🗑️ DNS удален<br>Удален 1.2.3.4 из s1.example.com                              |
+| **Критическая**    | Все ноды недоступны | 🔴 КРИТИЧНО: Все ноды недоступны                                                |
+| **Восстановление** | Ноды снова онлайн   | 🟢 Восстановление: Ноды снова онлайн                                            |
+| **Запуск**         | Сервис запущен      | 🚀 Сервис запущен                                                               |
+| **Остановка**      | Сервис остановлен   | 🛑 Сервис остановлен                                                            |
 
 ### Фильтрация уведомлений
 
@@ -216,10 +246,54 @@ telegram:
   enabled: true
   locale: ru
   notify:
-    node_changes: true  # изменения статуса нод
-    dns_changes: true   # изменения DNS
-    errors: true        # ошибки
-    critical: true      # критические события
+    node_changes: true
+    dns_changes: true
+    errors: true
+    critical: true
+```
+
+## HTTP API
+
+Сервис включает опциональный REST API для управления конфигурацией в реальном времени.
+
+Полная документация: **[docs/API.md](docs/API.md)**
+
+### Быстрый старт
+
+1. Сгенерируйте токен:
+
+```bash
+openssl rand -hex 32
+```
+
+2. Добавьте в `.env`:
+
+```env
+API_TOKEN=<сгенерированный токен>
+```
+
+3. Включите в `config.yml`:
+
+```yaml
+api:
+  enabled: true
+  host: "127.0.0.1"
+  port: 8741
+```
+
+### Reverse proxy
+
+Примеры конфигурации для проброса API через reverse proxy:
+
+- **Caddy** — [`docs/Caddyfile.example`](docs/Caddyfile.example)
+- **Nginx** — [`docs/nginx.example.conf`](docs/nginx.example.conf)
+
+Подключите reverse proxy к сети проекта, чтобы он мог обращаться к контейнеру по имени:
+
+```yaml
+networks:
+  remnawave-cloudflare-nodes:
+    external: true
 ```
 
 ### Логи

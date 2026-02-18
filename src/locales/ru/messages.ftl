@@ -18,11 +18,11 @@ node-became-unhealthy = <b>❌ Нода офлайн</b>
     📊 Ноды: { $online }/{ $total } онлайн, { $disabled } отключено
 
 # Операции DNS
-dns-record-added = <b>📝 DNS обновлён</b>
+dns-record-added = <b>📝 DNS обновлен</b>
     Добавлен { $ip } → { $domain }
 
-dns-record-removed = <b>🗑️ DNS удалён</b>
-    Удалён { $ip } из { $domain }
+dns-record-removed = <b>🗑️ DNS удален</b>
+    Удален { $ip } из { $domain }
 
 # Ошибки
 dns-operation-error = <b>⚠️ Ошибка DNS</b>
