@@ -1,15 +1,13 @@
 import logging
 import sys
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
+
+_LOG_MAX_BYTES = 20 * 1024 * 1024  # 20 MB
+_LOG_BACKUP_COUNT = 3
 
 
 def setup_logger(name: str, level: str = "INFO", log_file: str = None):
-    logging.basicConfig(
-        level=getattr(logging, level.upper()),
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[],
-    )
-
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, level.upper()))
     root_logger.handlers = []
@@ -28,7 +26,12 @@ def setup_logger(name: str, level: str = "INFO", log_file: str = None):
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
-        file_handler = logging.FileHandler(log_file)
+        file_handler = RotatingFileHandler(
+            log_file,
+            maxBytes=_LOG_MAX_BYTES,
+            backupCount=_LOG_BACKUP_COUNT,
+            encoding="utf-8",
+        )
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
 

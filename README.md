@@ -23,6 +23,7 @@ Automatically manage Cloudflare DNS records based on Remnawave (https://docs.rw)
 - **Auto Zone Discovery** - Automatically discovers Cloudflare zone IDs from domain names
 - **Multi-Domain Support** - Manage multiple domains with multiple DNS zones each
 - **Telegram Notifications** - Real-time alerts for node status changes, DNS updates, and critical events
+- **HTTP API** - Manage configuration at runtime via a secured REST API
 - **Configurable Intervals** - Set custom health check intervals
 - **Docker Ready** - Easy deployment with Docker and Docker Compose
 
@@ -58,6 +59,10 @@ TELEGRAM_TOPIC_ID=
 TIMEZONE=UTC
 # Time format: %d-day, %m-month, %Y-year, %H-hour, %M-min, %S-sec
 TIME_FORMAT="%d.%m.%Y %H:%M:%S"
+
+# API server token (required when api.enabled: true in config.yml)
+# Generate with: openssl rand -hex 32
+API_TOKEN=
 ```
 
 Copy [`config.example.yml`](config.example.yml) to `config.yml` and configure your domains:
@@ -74,7 +79,7 @@ domains:
       - name: s1          # Creates s1.example1.com
         ttl: 60           # Record TTL in seconds
         proxied: false    # Cloudflare proxy (orange cloud)
-        ips:              # Node IPs to monitor
+        ips: # Node IPs to monitor
           - 1.2.3.4
           - 5.6.7.8
 
@@ -98,22 +103,46 @@ telegram:
     dns_changes: true   # DNS record changes
     errors: true        # Error alerts
     critical: true      # All nodes down alert
+
+api:
+  enabled: false
+  host: "0.0.0.0"
+  port: 8741
+  docs: false
 ```
 
 ### Configuration Reference
 
-| Variable               | Description                                    | Default           | Required |
-|------------------------|------------------------------------------------|-------------------|----------|
-| `REMNAWAVE_API_URL`    | Remnawave API endpoint to fetch nodes from     | -                 | Yes      |
-| `REMNAWAVE_API_KEY`    | API authentication token                       | -                 | Yes      |
-| `CLOUDFLARE_API_TOKEN` | Cloudflare API token with DNS edit permissions | -                 | Yes      |
-| `TELEGRAM_BOT_TOKEN`   | Telegram bot token from @BotFather             | -                 | No       |
-| `TELEGRAM_CHAT_ID`     | Chat ID for notifications                      | -                 | No       |
-| `TELEGRAM_TOPIC_ID`    | Forum topic ID (for supergroups with topics)   | -                 | No       |
-| `TIMEZONE`             | Timezone for timestamps (e.g. Europe/Moscow)   | UTC               | No       |
-| `TIME_FORMAT`          | Time format for timestamps                     | %d.%m.%Y %H:%M:%S | No       |
-| `check-interval`       | Interval in seconds between health checks      | 30                | No       |
-| `logging.level`        | Log level (DEBUG, INFO, WARNING, ERROR)        | INFO              | No       |
+#### Environment variables
+
+| Variable               | Description                                    | Default             | Required         |
+|------------------------|------------------------------------------------|---------------------|------------------|
+| `REMNAWAVE_API_URL`    | Remnawave API endpoint                         | -                   | Yes              |
+| `REMNAWAVE_API_KEY`    | Remnawave API token                            | -                   | Yes              |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token with DNS edit permissions | -                   | Yes              |
+| `TELEGRAM_BOT_TOKEN`   | Telegram bot token from @BotFather             | -                   | No               |
+| `TELEGRAM_CHAT_ID`     | Chat ID for notifications                      | -                   | No               |
+| `TELEGRAM_TOPIC_ID`    | Forum topic ID (for supergroups with topics)   | -                   | No               |
+| `TIMEZONE`             | Timezone for timestamps (e.g. Europe/Moscow)   | `UTC`               | No               |
+| `TIME_FORMAT`          | Time format for timestamps                     | `%d.%m.%Y %H:%M:%S` | No               |
+| `API_TOKEN`            | API auth token — must be 64-char hex string    | -                   | When API enabled |
+
+#### config.yml
+
+| Key                            | Description                                  | Default   | Required |
+|--------------------------------|----------------------------------------------|-----------|----------|
+| `remnawave.check-interval`     | Interval in seconds between health checks    | `30`      | No       |
+| `logging.level`                | Log level (`DEBUG` `INFO` `WARNING` `ERROR`) | `INFO`    | No       |
+| `telegram.enabled`             | Enable Telegram notifications                | `false`   | No       |
+| `telegram.locale`              | Notification language (`en`, `ru`)           | `en`      | No       |
+| `telegram.notify.node_changes` | Notify on node status changes                | `true`    | No       |
+| `telegram.notify.dns_changes`  | Notify on DNS record changes                 | `true`    | No       |
+| `telegram.notify.errors`       | Notify on errors                             | `true`    | No       |
+| `telegram.notify.critical`     | Notify when all nodes go down                | `true`    | No       |
+| `api.enabled`                  | Enable the HTTP API server                   | `false`   | No       |
+| `api.host`                     | Address to bind the API server               | `0.0.0.0` | No       |
+| `api.port`                     | Port for the API server                      | `8741`    | No       |
+| `api.docs`                     | Enable Swagger UI at `/api/docs`             | `false`   | No       |
 
 ## Installation
 
@@ -130,13 +159,15 @@ services:
     env_file:
       - .env
     volumes:
-      - ./config.yml:/app/config.yml:ro
+      - ./config.yml:/app/config.yml
       - ./logs:/app/logs
-    logging:
-      driver: json-file
-      options:
-        max-size: "20m"
-        max-file: "3"
+    networks:
+      - remnawave-cloudflare-nodes
+
+networks:
+  remnawave-cloudflare-nodes:
+    name: remnawave-cloudflare-nodes
+    driver: bridge
 ```
 
 2. Create and configure your environment file:
@@ -194,13 +225,13 @@ python -m src
    Cloudflare zone IDs
 
 2. **Health Evaluation** - Based on node status, determines which nodes are healthy:
-   - Node must be connected (`is_connected = true`)
-   - Node must not be disabled (`is_disabled = false`)
-   - Node must have Xray installed (`xray_version` is not null)
+    - Node must be connected (`is_connected = true`)
+    - Node must not be disabled (`is_disabled = false`)
+    - Node must have Xray installed (`xray_version` is not null)
 
 3. **DNS Synchronization** - For each configured zone:
-   - Adds DNS A records for IPs that are both configured AND healthy
-   - Removes DNS A records for IPs that are no longer healthy
+    - Adds DNS A records for IPs that are both configured AND healthy
+    - Removes DNS A records for IPs that are no longer healthy
 
 4. **Continuous Updates** - The service polls the Remnawave API at the configured interval (`check-interval`) and
    updates DNS records
@@ -241,6 +272,7 @@ telegram:
 | **DNS Updated**   | DNS record added      | 📝 DNS Updated<br>Added 1.2.3.4 → s1.example.com                                        |
 | **DNS Removed**   | DNS record removed    | 🗑️ DNS Removed<br>Removed 1.2.3.4 from s1.example.com                                  |
 | **Critical**      | All nodes down        | 🔴 CRITICAL: All Nodes Down<br>All 5 nodes are unreachable.                             |
+| **Recovered**     | All nodes back online | 🟢 Recovered: Nodes Back Online                                                         |
 | **Service Start** | Monitoring started    | 🚀 Service Started                                                                      |
 | **Service Stop**  | Monitoring stopped    | 🛑 Service Stopped                                                                      |
 
@@ -257,6 +289,51 @@ telegram:
     dns_changes: true   # DNS record add/remove
     errors: true        # Error alerts
     critical: true      # All nodes down alert
+```
+
+## HTTP API
+
+The service includes an optional REST API for managing configuration at runtime.
+
+See **[docs/API.md](docs/API.md)** for the full API reference.
+
+### Quick start
+
+1. Generate a token:
+
+```bash
+openssl rand -hex 32
+```
+
+2. Add it to `.env`:
+
+```env
+API_TOKEN=<generated token>
+```
+
+3. Enable in `config.yml`:
+
+```yaml
+api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8741
+  docs: false
+```
+
+### Reverse proxy
+
+Example configs for exposing the API behind a reverse proxy:
+
+- **Caddy** — [`docs/Caddyfile.example`](docs/Caddyfile.example)
+- **Nginx** — [`docs/nginx.example.conf`](docs/nginx.example.conf)
+
+Connect your reverse proxy to the project network so it can reach the container by name:
+
+```yaml
+networks:
+  remnawave-cloudflare-nodes:
+    external: true
 ```
 
 ### Logs

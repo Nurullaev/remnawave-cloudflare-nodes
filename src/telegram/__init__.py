@@ -7,6 +7,13 @@ from .events import (
     CriticalState,
     CriticalStateRecovered,
     HealthCheckError,
+    ServiceStarted,
+    ApiConfigUpdated,
+    ApiDomainAdded,
+    ApiDomainRemoved,
+    ApiZoneAdded,
+    ApiZoneUpdated,
+    ApiZoneRemoved,
 )
 from .formatter import MessageFormatter
 
@@ -19,5 +26,12 @@ __all__ = [
     "CriticalState",
     "CriticalStateRecovered",
     "HealthCheckError",
+    "ServiceStarted",
+    "ApiConfigUpdated",
+    "ApiDomainAdded",
+    "ApiDomainRemoved",
+    "ApiZoneAdded",
+    "ApiZoneUpdated",
+    "ApiZoneRemoved",
     "MessageFormatter",
 ]

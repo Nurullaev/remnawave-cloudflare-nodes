@@ -1,0 +1,33 @@
+# Caddy reverse proxy for remnawave-cloudflare-nodes HTTP API
+#
+# Prerequisites:
+#   1. api.enabled: true in config.yml
+#   2. Caddy joined to the remnawave-cloudflare-nodes Docker network:
+#
+#      networks:
+#        remnawave-cloudflare-nodes:
+#          external: true
+#
+# The service is reachable by its container name inside the shared Docker network.
+
+# --- Option 1: plain domain ---
+# API available at: https://api.example.com/api/...
+
+api.example.com {
+    reverse_proxy remnawave-cloudflare-nodes:8741
+}
+
+# --- Option 2: custom path prefix (recommended for obscurity) ---
+# API available at: https://example.com/c3f8a1e4b7d2f9c6a3e8b1d4f7c2a9e5/api/...
+#
+# The path prefix below is an example. Replace it with your own random string.
+# Generate a new one with:
+#   openssl rand -hex 16
+#
+# Caddy strips the prefix before forwarding, so the app receives /api/...
+
+example.com {
+    handle_path /c3f8a1e4b7d2f9c6a3e8b1d4f7c2a9e5/* {
+        reverse_proxy remnawave-cloudflare-nodes:8741
+    }
+}

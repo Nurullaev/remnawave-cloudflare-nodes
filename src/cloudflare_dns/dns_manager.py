@@ -117,6 +117,17 @@ class DNSManager:
                 )
             return False
 
+    async def cleanup_zone(self, zone_id: str, zone_name: str, domain: str) -> None:
+        full_domain = f"{zone_name}.{domain}"
+        try:
+            existing_records = await self.client.get_dns_records(zone_id, name=full_domain, record_type="A")
+        except Exception as e:
+            self.logger.error(f"{full_domain}: failed to fetch records for cleanup: {e}")
+            return
+
+        for record in existing_records:
+            await self._remove_record(zone_id, domain, zone_name, record["content"], record)
+
     async def get_all_zone_records(self, zone_id: str, domain: str) -> List[dict]:
         try:
             records = await self.client.get_dns_records(zone_id, record_type="A")

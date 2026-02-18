@@ -12,6 +12,7 @@ class Config:
         load_dotenv()
 
         self.config_path = Path(config_path)
+        self._raw_config: Dict[str, Any] = {}
         self._config = self._load_config()
 
     def _load_config(self) -> Dict[str, Any]:
@@ -19,9 +20,14 @@ class Config:
             raise FileNotFoundError(f"Config file not found: {self.config_path}")
 
         with open(self.config_path, "r") as f:
-            config = yaml.safe_load(f)
+            self._raw_config = yaml.safe_load(f)
 
-        return self._substitute_env_vars(config)
+        return self._substitute_env_vars(self._raw_config)
+
+    def _save(self) -> None:
+        with open(self.config_path, "w") as f:
+            yaml.dump(self._raw_config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        self._config = self._substitute_env_vars(self._raw_config)
 
     def _substitute_env_vars(self, config: Any) -> Any:
         if isinstance(config, dict):
@@ -131,6 +137,105 @@ class Config:
     def telegram_notify_critical(self) -> bool:
         return self.get("telegram.notify.critical", True)
 
+    @property
+    def telegram_notify_api_changes(self) -> bool:
+        return self.get("telegram.notify.api_changes", True)
+
+    # --- Config mutation methods ---
+
+    def update_check_interval(self, interval: int) -> None:
+        self._raw_config.setdefault("remnawave", {})["check-interval"] = interval
+        self._save()
+
+    def update_log_level(self, level: str) -> None:
+        self._raw_config.setdefault("logging", {})["level"] = level
+        self._save()
+
+    def update_telegram(self, **kwargs) -> None:
+        tg = self._raw_config.setdefault("telegram", {})
+        for key, value in kwargs.items():
+            if key == "notify" and isinstance(value, dict):
+                tg.setdefault("notify", {}).update(value)
+            else:
+                tg[key] = value
+        self._save()
+
+    def add_domain(self, domain: str, zones: list) -> None:
+        domains = self._raw_config.setdefault("domains", [])
+        for d in domains:
+            if d.get("domain") == domain:
+                raise ValueError(f"Domain '{domain}' already exists")
+        domains.append({"domain": domain, "zones": zones})
+        self._save()
+
+    def remove_domain(self, domain: str) -> None:
+        domains = self._raw_config.get("domains", [])
+        new_domains = [d for d in domains if d.get("domain") != domain]
+        if len(new_domains) == len(domains):
+            raise ValueError(f"Domain '{domain}' not found")
+        self._raw_config["domains"] = new_domains
+        self._save()
+
+    def add_zone(self, domain: str, zone: dict) -> None:
+        for d in self._raw_config.get("domains", []):
+            if d.get("domain") == domain:
+                zones = d.setdefault("zones", [])
+                for z in zones:
+                    if z.get("name") == zone["name"]:
+                        raise ValueError(f"Zone '{zone['name']}' already exists for '{domain}'")
+                zones.append(zone)
+                self._save()
+                return
+        raise ValueError(f"Domain '{domain}' not found")
+
+    def remove_zone(self, domain: str, zone_name: str) -> None:
+        for d in self._raw_config.get("domains", []):
+            if d.get("domain") == domain:
+                zones = d.get("zones", [])
+                new_zones = [z for z in zones if z.get("name") != zone_name]
+                if len(new_zones) == len(zones):
+                    raise ValueError(f"Zone '{zone_name}' not found for '{domain}'")
+                d["zones"] = new_zones
+                self._save()
+                return
+        raise ValueError(f"Domain '{domain}' not found")
+
+    def update_zone(self, domain: str, zone_name: str, **kwargs) -> None:
+        for d in self._raw_config.get("domains", []):
+            if d.get("domain") == domain:
+                for z in d.get("zones", []):
+                    if z.get("name") == zone_name:
+                        for key, value in kwargs.items():
+                            z[key] = value
+                        self._save()
+                        return
+                raise ValueError(f"Zone '{zone_name}' not found for '{domain}'")
+        raise ValueError(f"Domain '{domain}' not found")
+
+    # --- API config properties ---
+
+    @property
+    def api_enabled(self) -> bool:
+        return self.get("api.enabled", False)
+
+    @property
+    def api_host(self) -> str:
+        return self.get("api.host", "0.0.0.0")
+
+    @property
+    def api_port(self) -> int:
+        return self.get("api.port", 8741)
+
+    @property
+    def api_docs_enabled(self) -> bool:
+        return self.get("api.docs", False)
+
+    @property
+    def api_token(self) -> str:
+        return os.getenv("API_TOKEN", "")
+
+    _API_TOKEN_RE = re.compile(r"^[0-9a-f]{64}$")
+
     def validate(self) -> None:
         missing = []
         if not self.remnawave_url:
@@ -141,6 +246,19 @@ class Config:
             missing.append("CLOUDFLARE_API_TOKEN")
         if missing:
             raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+
+        if self.api_enabled:
+            token = self.api_token
+            if not token:
+                raise ValueError(
+                    "API_TOKEN is required when api.enabled is true. "
+                    "Generate one with: openssl rand -hex 32"
+                )
+            if not self._API_TOKEN_RE.match(token):
+                raise ValueError(
+                    "API_TOKEN must be a 64-character lowercase hex string. "
+                    "Generate one with: openssl rand -hex 32"
+                )
 
     def get_all_zones(self) -> list:
         zones = []

@@ -6,7 +6,12 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramRetryAfter
 
-from .events import NodeStateChange, DNSChange, DNSError, CriticalState, CriticalStateRecovered, HealthCheckError
+from .events import (
+    NodeStateChange, DNSChange, DNSError, CriticalState, CriticalStateRecovered, HealthCheckError,
+    ServiceStarted,
+    ApiConfigUpdated, ApiDomainAdded, ApiDomainRemoved,
+    ApiZoneAdded, ApiZoneUpdated, ApiZoneRemoved,
+)
 from .formatter import MessageFormatter
 from ..utils.logger import get_logger
 
@@ -19,6 +24,7 @@ class TelegramNotifier:
         topic_id: Optional[int] = None,
         locale: str = "en",
         enabled: bool = True,
+        notify_api_changes: bool = True,
         queue_size: int = 100,
         retry_attempts: int = 3,
         retry_delay: float = 1.0,
@@ -26,6 +32,7 @@ class TelegramNotifier:
     ):
         self.logger = get_logger(__name__)
         self.enabled = enabled
+        self.notify_api_changes = notify_api_changes
         self.chat_id = chat_id
         self.topic_id = topic_id
         self.retry_attempts = retry_attempts
@@ -173,14 +180,50 @@ class TelegramNotifier:
         message = self._formatter.format_health_check_error(error)
         self._enqueue(message)
 
-    def notify_service_started(self) -> None:
+    def notify_service_started(self, event: ServiceStarted) -> None:
         if not self.enabled:
             return
-        message = self._formatter.format_service_started()
+        message = self._formatter.format_service_started(event)
         self._enqueue(message)
 
     def notify_service_stopped(self) -> None:
         if not self.enabled:
             return
         message = self._formatter.format_service_stopped()
+        self._enqueue(message)
+
+    def notify_api_config_updated(self, event: ApiConfigUpdated) -> None:
+        if not self.enabled or not self.notify_api_changes:
+            return
+        message = self._formatter.format_api_config_updated(event)
+        self._enqueue(message)
+
+    def notify_api_domain_added(self, event: ApiDomainAdded) -> None:
+        if not self.enabled or not self.notify_api_changes:
+            return
+        message = self._formatter.format_api_domain_added(event)
+        self._enqueue(message)
+
+    def notify_api_domain_removed(self, event: ApiDomainRemoved) -> None:
+        if not self.enabled or not self.notify_api_changes:
+            return
+        message = self._formatter.format_api_domain_removed(event)
+        self._enqueue(message)
+
+    def notify_api_zone_added(self, event: ApiZoneAdded) -> None:
+        if not self.enabled or not self.notify_api_changes:
+            return
+        message = self._formatter.format_api_zone_added(event)
+        self._enqueue(message)
+
+    def notify_api_zone_updated(self, event: ApiZoneUpdated) -> None:
+        if not self.enabled or not self.notify_api_changes:
+            return
+        message = self._formatter.format_api_zone_updated(event)
+        self._enqueue(message)
+
+    def notify_api_zone_removed(self, event: ApiZoneRemoved) -> None:
+        if not self.enabled or not self.notify_api_changes:
+            return
+        message = self._formatter.format_api_zone_removed(event)
         self._enqueue(message)
