@@ -115,7 +115,7 @@ class MessageFormatter:
         zone_lines = []
         for domain_conf in event.domains:
             domain = domain_conf.get("domain", "")
-            for zone in domain_conf.get("zones", []):
+            for zone in domain_conf.get("zones") or []:
                 ips = zone.get("ips", [])
                 zone_lines.append(self._l10n.format_value("service-zone-line", {
                     "zone": f"{zone['name']}.{domain}",

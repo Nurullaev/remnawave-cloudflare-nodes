@@ -77,7 +77,7 @@ class Config:
 
     @property
     def domains(self) -> list:
-        return self.get("domains", [])
+        return self.get("domains") or []
 
     @property
     def logging_config(self) -> dict:
@@ -169,7 +169,7 @@ class Config:
         self._save()
 
     def remove_domain(self, domain: str) -> None:
-        domains = self._raw_config.get("domains", [])
+        domains = self._raw_config.get("domains") or []
         new_domains = [d for d in domains if d.get("domain") != domain]
         if len(new_domains) == len(domains):
             raise ValueError(f"Domain '{domain}' not found")
@@ -177,7 +177,7 @@ class Config:
         self._save()
 
     def add_zone(self, domain: str, zone: dict) -> None:
-        for d in self._raw_config.get("domains", []):
+        for d in self._raw_config.get("domains") or []:
             if d.get("domain") == domain:
                 zones = d.setdefault("zones", [])
                 for z in zones:
@@ -189,9 +189,9 @@ class Config:
         raise ValueError(f"Domain '{domain}' not found")
 
     def remove_zone(self, domain: str, zone_name: str) -> None:
-        for d in self._raw_config.get("domains", []):
+        for d in self._raw_config.get("domains") or []:
             if d.get("domain") == domain:
-                zones = d.get("zones", [])
+                zones = d.get("zones") or []
                 new_zones = [z for z in zones if z.get("name") != zone_name]
                 if len(new_zones) == len(zones):
                     raise ValueError(f"Zone '{zone_name}' not found for '{domain}'")
@@ -201,9 +201,9 @@ class Config:
         raise ValueError(f"Domain '{domain}' not found")
 
     def update_zone(self, domain: str, zone_name: str, **kwargs) -> None:
-        for d in self._raw_config.get("domains", []):
+        for d in self._raw_config.get("domains") or []:
             if d.get("domain") == domain:
-                for z in d.get("zones", []):
+                for z in d.get("zones") or []:
                     if z.get("name") == zone_name:
                         for key, value in kwargs.items():
                             z[key] = value
@@ -264,7 +264,7 @@ class Config:
         zones = []
         for domain_config in self.domains:
             domain = domain_config.get("domain")
-            for zone in domain_config.get("zones", []):
+            for zone in domain_config.get("zones") or []:
                 zone_data = {
                     "domain": domain,
                     "name": zone.get("name"),

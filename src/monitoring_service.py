@@ -246,7 +246,7 @@ class MonitoringService:
             return
         for domain_conf in self.config.domains:
             if domain_conf.get("domain") == domain:
-                for zone in domain_conf.get("zones", []):
+                for zone in domain_conf.get("zones") or []:
                     await self.dns_manager.cleanup_zone(zone_id, zone["name"], domain)
                 return
 
