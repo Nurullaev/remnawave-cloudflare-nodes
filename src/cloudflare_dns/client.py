@@ -62,14 +62,14 @@ class CloudflareClient:
                 await self._retry_delay(attempt)
 
     async def create_dns_record(
-        self, zone_id: str, name: str, content: str, record_type: str = "A", ttl: int = 120, proxied: bool = False
+            self, zone_id: str, name: str, content: str, record_type: str = "A", ttl: int = 120, proxied: bool = False
     ) -> Dict:
         attempt = 0
         while True:
             try:
                 await self._rate_limit()
-                record = await self.cf.dns.records.create(
-                    zone_id=zone_id, type=record_type, name=name, content=content, ttl=ttl, proxied=proxied
+                record = await self.cf.dns.records.create(  # type: ignore[call-overload]
+                    zone_id=zone_id, type=record_type, name=name, content=content, ttl=float(ttl), proxied=proxied
                 )
                 self.logger.info(f"Created DNS record: {name} -> {content}")
                 return {
@@ -92,26 +92,26 @@ class CloudflareClient:
                 await self._retry_delay(attempt)
 
     async def update_dns_record(
-        self,
-        zone_id: str,
-        record_id: str,
-        name: str,
-        content: str,
-        record_type: str = "A",
-        ttl: int = 120,
-        proxied: bool = False,
+            self,
+            zone_id: str,
+            record_id: str,
+            name: str,
+            content: str,
+            record_type: str = "A",
+            ttl: int = 120,
+            proxied: bool = False,
     ) -> Dict:
         attempt = 0
         while True:
             try:
                 await self._rate_limit()
-                record = await self.cf.dns.records.update(
+                record = await self.cf.dns.records.update(  # type: ignore[call-overload]
                     dns_record_id=record_id,
                     zone_id=zone_id,
                     type=record_type,
                     name=name,
                     content=content,
-                    ttl=ttl,
+                    ttl=float(ttl),
                     proxied=proxied,
                 )
                 self.logger.info(f"Updated DNS record: {name} -> {content}")
@@ -148,7 +148,7 @@ class CloudflareClient:
                 await self._retry_delay(attempt)
 
     async def get_record_by_name_and_content(
-        self, zone_id: str, name: str, content: str, record_type: str = "A"
+            self, zone_id: str, name: str, content: str, record_type: str = "A"
     ) -> Optional[Dict]:
         records = await self.get_dns_records(zone_id, name=name, record_type=record_type)
         for record in records:
@@ -171,7 +171,8 @@ class CloudflareClient:
 
             except Exception as e:
                 attempt += 1
-                self.logger.error(f"Error fetching zone for domain {domain} (attempt {attempt}/{self.max_retries}): {e}")
+                self.logger.error(
+                    f"Error fetching zone for domain {domain} (attempt {attempt}/{self.max_retries}): {e}")
                 if attempt >= self.max_retries:
                     raise
                 await self._retry_delay(attempt)

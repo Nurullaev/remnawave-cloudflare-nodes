@@ -57,11 +57,11 @@ service-api-info = 🔌 API: { $host }:{ $port }
 domain-zone-line = • { $zone } (TTL: { $ttl }, Proxied: { $proxied })
 zone-added-details =
     IPs:
-    { $ip_list }
-    TTL: { $ttl } | Proxied: { $proxied }
+            { $ip_list }
+            TTL: { $ttl } | Proxied: { $proxied }
 zone-change-ips =
     IPs:
-    { $ip_list }
+            { $ip_list }
 zone-change-ttl = TTL: { $value }
 zone-change-proxied = Proxied: { $value }
 
@@ -80,15 +80,15 @@ api-domain-removed = <b>➖ Domain Removed via API</b>
     From: { $ip }
 
 api-zone-added = <b>➕ Zone Added via API</b>
-    { $zone }.{ $domain }
+    { $fqdn }
     { $details }
     From: { $ip }
 
 api-zone-updated = <b>⚙️ Zone Updated via API</b>
-    { $zone }.{ $domain }
+    { $fqdn }
     { $changes }
     From: { $ip }
 
 api-zone-removed = <b>➖ Zone Removed via API</b>
-    { $zone }.{ $domain }
+    { $fqdn }
     From: { $ip }

@@ -1,8 +1,9 @@
 from typing import TYPE_CHECKING, Dict, Optional, Set
 
+from .cloudflare_dns import CloudflareClient, DNSManager
 from .config import Config
 from .remnawave import NodeMonitor
-from .cloudflare_dns import CloudflareClient, DNSManager
+from .utils.dns import build_fqdn
 from .utils.logger import get_logger
 
 if TYPE_CHECKING:
@@ -11,12 +12,12 @@ if TYPE_CHECKING:
 
 class MonitoringService:
     def __init__(
-        self,
-        config: Config,
-        node_monitor: NodeMonitor,
-        cloudflare_client: CloudflareClient,
-        dns_manager: DNSManager,
-        notifier: Optional["TelegramNotifier"] = None,
+            self,
+            config: Config,
+            node_monitor: NodeMonitor,
+            cloudflare_client: CloudflareClient,
+            dns_manager: DNSManager,
+            notifier: Optional["TelegramNotifier"] = None,
     ):
         self.config = config
         self.node_monitor = node_monitor
@@ -47,11 +48,12 @@ class MonitoringService:
             if not current_zone_id:
                 continue
 
-            full_domain = f"{zone['name']}.{domain}"
+            full_domain = build_fqdn(zone['name'], domain)
             self.logger.info(f"  Zone: {full_domain}, TTL: {zone['ttl']}, Proxied: {zone['proxied']}")
             self.logger.info(f"  Configured IPs: {', '.join(zone['ips'])}")
 
-            existing_records = await self.cloudflare_client.get_dns_records(current_zone_id, name=full_domain, record_type="A")
+            existing_records = await self.cloudflare_client.get_dns_records(current_zone_id, name=full_domain,
+                                                                            record_type="A")
             if existing_records:
                 existing_ips = [record["content"] for record in existing_records]
                 self.logger.info(f"  Existing DNS records: {', '.join(existing_ips)}")
@@ -149,21 +151,16 @@ class MonitoringService:
         total = len(nodes)
         disabled = sum(1 for n in nodes if n.is_disabled)
 
-        # Build zone → IPs mapping from config
         zone_ip_map: Dict[str, Set[str]] = {}
         for zone in self.config.get_all_zones():
-            key = f"{zone['name']}.{zone['domain']}"
+            key = build_fqdn(zone['name'], zone['domain'])
             zone_ip_map[key] = set(zone["ips"])
 
-        # Group nodes by zone
         zone_nodes: Dict[str, list] = {
             key: [n for n in nodes if n.address in ips]
             for key, ips in zone_ip_map.items()
         }
 
-        # Start global and per-zone online counts from the *previous* known states.
-        # New nodes (not seen before) fall back to their current state so they don't
-        # fire a transition on first sight.
         online = sum(1 for n in nodes if self._previous_node_states.get(n.address, n.is_healthy))
         zone_online: Dict[str, int] = {
             key: sum(1 for n in znodes if self._previous_node_states.get(n.address, n.is_healthy))
@@ -181,8 +178,6 @@ class MonitoringService:
             if prev_healthy == curr_healthy:
                 continue
 
-            # Apply this node's transition to the running counters before notifying,
-            # so each notification reflects the state after exactly this change.
             delta = 1 if curr_healthy else -1
             online += delta
 
@@ -235,7 +230,7 @@ class MonitoringService:
     async def cleanup_zone(self, domain: str, zone_name: str) -> None:
         zone_id = await self._get_zone_id(domain)
         if not zone_id:
-            self.logger.warning(f"Cannot cleanup {zone_name}.{domain}: zone_id not found")
+            self.logger.warning(f"Cannot cleanup {build_fqdn(zone_name, domain)}: zone_id not found")
             return
         await self.dns_manager.cleanup_zone(zone_id, zone_name, domain)
 

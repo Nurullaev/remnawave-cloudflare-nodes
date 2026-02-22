@@ -18,17 +18,17 @@ from ..utils.logger import get_logger
 
 class TelegramNotifier:
     def __init__(
-        self,
-        bot_token: str,
-        chat_id: str,
-        topic_id: Optional[int] = None,
-        locale: str = "en",
-        enabled: bool = True,
-        notify_api_changes: bool = True,
-        queue_size: int = 100,
-        retry_attempts: int = 3,
-        retry_delay: float = 1.0,
-        rate_limit_delay: float = 0.1,
+            self,
+            bot_token: str,
+            chat_id: str,
+            topic_id: Optional[int] = None,
+            locale: str = "en",
+            enabled: bool = True,
+            notify_api_changes: bool = True,
+            queue_size: int = 100,
+            retry_attempts: int = 3,
+            retry_delay: float = 1.0,
+            rate_limit_delay: float = 0.1,
     ):
         self.logger = get_logger(__name__)
         self.enabled = enabled
@@ -124,7 +124,8 @@ class TelegramNotifier:
                     self.logger.error(f"Giving up on notification after {attempt} attempts: {e}")
                     return
                 delay = min(self.retry_delay * attempt, 30.0)
-                self.logger.warning(f"Telegram API error (attempt {attempt}/{self.retry_attempts}), retrying in {delay}s: {e}")
+                self.logger.warning(
+                    f"Telegram API error (attempt {attempt}/{self.retry_attempts}), retrying in {delay}s: {e}")
                 await asyncio.sleep(delay)
             except Exception as e:
                 attempt += 1
@@ -132,7 +133,8 @@ class TelegramNotifier:
                     self.logger.error(f"Giving up on notification after {attempt} attempts: {e}")
                     return
                 delay = min(self.retry_delay * attempt, 30.0)
-                self.logger.error(f"Failed to send notification (attempt {attempt}/{self.retry_attempts}), retrying in {delay}s: {e}")
+                self.logger.error(
+                    f"Failed to send notification (attempt {attempt}/{self.retry_attempts}), retrying in {delay}s: {e}")
                 await asyncio.sleep(delay)
 
     def _enqueue(self, message: str) -> None:

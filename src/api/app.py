@@ -2,6 +2,8 @@ from typing import TYPE_CHECKING
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 
+from .auth import make_auth_dependency
+from .models import ConfigPatch, DomainIn, ZoneIn, ZonePatch
 from ..config import Config
 from ..telegram import (
     TelegramNotifier,
@@ -13,8 +15,6 @@ from ..telegram import (
     ApiZoneRemoved,
 )
 from ..utils.logger import get_logger
-from .auth import make_auth_dependency
-from .models import ConfigPatch, DomainIn, ZoneIn, ZonePatch
 
 if TYPE_CHECKING:
     from ..monitoring_service import MonitoringService
