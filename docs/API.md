@@ -40,6 +40,22 @@ Any request with a missing or wrong token returns `401 Unauthorized`.
 
 ---
 
+## Apex (root) domain zones
+
+Use `"name": "@"` in zone objects to create A records for the root domain (`example.com`) instead of a subdomain.
+When referencing an apex zone in URL path parameters (`PATCH` / `DELETE` zone endpoints), the `@` character must be
+URL-encoded as `%40`:
+
+```
+# Subdomain zone
+PATCH /api/config/domains/example.com/zones/s1
+
+# Apex zone
+PATCH /api/config/domains/example.com/zones/%40
+```
+
+---
+
 ## Endpoints
 
 ### GET `/api/config`
@@ -168,19 +184,27 @@ Add a new domain with one or more zones.
         "1.2.3.4",
         "5.6.7.8"
       ]
+    },
+    {
+      "name": "@",
+      "ttl": 60,
+      "proxied": false,
+      "ips": [
+        "1.2.3.4"
+      ]
     }
   ]
 }
 ```
 
-| Field             | Type    | Constraints           |
-|-------------------|---------|-----------------------|
-| `domain`          | string  | required              |
-| `zones`           | array   | at least 1 zone       |
-| `zones[].name`    | string  | required              |
-| `zones[].ttl`     | integer | `>= 1`, default `120` |
-| `zones[].proxied` | boolean | default `false`       |
-| `zones[].ips`     | array   | at least 1 IP         |
+| Field             | Type    | Constraints                                   |
+|-------------------|---------|-----------------------------------------------|
+| `domain`          | string  | required                                      |
+| `zones`           | array   | at least 1 zone                               |
+| `zones[].name`    | string  | required; use `"@"` for apex/root DNS records |
+| `zones[].ttl`     | integer | `>= 1`, default `120`                         |
+| `zones[].proxied` | boolean | default `false`                               |
+| `zones[].ips`     | array   | at least 1 IP                                 |
 
 **Response** — `201 Created`
 
@@ -268,6 +292,11 @@ Update an existing zone. All fields are optional.
 PATCH /api/config/domains/example.com/zones/s1
 ```
 
+> **Apex zones:** Use `%40` (URL-encoded `@`) in the path when targeting the apex zone:
+> ```
+> PATCH /api/config/domains/example.com/zones/%40
+> ```
+
 **Request body**
 
 ```json
@@ -311,6 +340,11 @@ Remove a zone from a domain.
 ```
 DELETE /api/config/domains/example.com/zones/s1
 ```
+
+> **Apex zones:** Use `%40` (URL-encoded `@`) in the path when targeting the apex zone:
+> ```
+> DELETE /api/config/domains/example.com/zones/%40
+> ```
 
 **Response**
 

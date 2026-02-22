@@ -82,6 +82,11 @@ domains:
         ips: # Node IPs to monitor
           - 1.2.3.4
           - 5.6.7.8
+      - name: "@"         # Creates apex record for example1.com itself
+        ttl: 60
+        proxied: false
+        ips:
+          - 1.2.3.4
 
   - domain: example2.com
     zones:
@@ -110,6 +115,32 @@ api:
   port: 8741
   docs: false
 ```
+
+### Apex (root) domain records
+
+Use `name: "@"` to create an A record for the root domain itself (`example.com`) instead of a subdomain:
+
+```yaml
+domains:
+  - domain: example.com
+    zones:
+      - name: "@"       # A record for example.com
+        ttl: 60
+        proxied: false
+        ips:
+          - 1.2.3.4
+      - name: sub       # A record for sub.example.com
+        ttl: 60
+        proxied: false
+        ips:
+          - 5.6.7.8
+```
+
+> **Note:** When managing apex zones via the HTTP API, URL-encode `@` as `%40` in the path:
+> ```
+> PATCH /api/config/domains/example.com/zones/%40
+> DELETE /api/config/domains/example.com/zones/%40
+> ```
 
 ### Configuration Reference
 

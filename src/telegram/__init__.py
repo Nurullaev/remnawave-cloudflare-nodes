@@ -1,4 +1,3 @@
-from .notifier import TelegramNotifier
 from .events import (
     ZoneStats,
     NodeStats,
@@ -17,6 +16,7 @@ from .events import (
     ApiZoneRemoved,
 )
 from .formatter import MessageFormatter
+from .notifier import TelegramNotifier
 
 __all__ = [
     "TelegramNotifier",

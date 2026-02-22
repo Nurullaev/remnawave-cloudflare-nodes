@@ -10,6 +10,7 @@ from .events import (
     ApiConfigUpdated, ApiDomainAdded, ApiDomainRemoved,
     ApiZoneAdded, ApiZoneUpdated, ApiZoneRemoved,
 )
+from ..utils.dns import build_fqdn
 from ..utils.logger import get_logger
 
 
@@ -81,14 +82,14 @@ class MessageFormatter:
     def format_dns_change(self, change: DNSChange) -> str:
         msg_id = "dns-record-added" if change.action == "added" else "dns-record-removed"
         return self._l10n.format_value(
-            msg_id, {"domain": f"{change.zone_name}.{change.domain}", "ip": change.ip_address}
+            msg_id, {"domain": build_fqdn(change.zone_name, change.domain), "ip": change.ip_address}
         )
 
     def format_dns_error(self, error: DNSError) -> str:
         return self._l10n.format_value(
             "dns-operation-error",
             {
-                "domain": f"{error.zone_name}.{error.domain}",
+                "domain": build_fqdn(error.zone_name, error.domain),
                 "ip": error.ip_address,
                 "action": error.action,
                 "error": error.error_message,
@@ -118,7 +119,7 @@ class MessageFormatter:
             for zone in domain_conf.get("zones") or []:
                 ips = zone.get("ips", [])
                 zone_lines.append(self._l10n.format_value("service-zone-line", {
-                    "zone": f"{zone['name']}.{domain}",
+                    "zone": build_fqdn(zone['name'], domain),
                     "count": len(ips),
                 }))
 
@@ -150,7 +151,7 @@ class MessageFormatter:
             ttl = zone.get("ttl", "")
             proxied = zone.get("proxied", False)
             lines.append(self._l10n.format_value("domain-zone-line", {
-                "zone": f"{name}.{event.domain}",
+                "zone": build_fqdn(name, event.domain),
                 "ttl": ttl,
                 "proxied": proxied,
             }))
@@ -177,7 +178,7 @@ class MessageFormatter:
         })
         return self._l10n.format_value(
             "api-zone-added",
-            {"zone": event.zone_name, "domain": event.domain, "details": details, "ip": event.client_ip},
+            {"fqdn": build_fqdn(event.zone_name, event.domain), "details": details, "ip": event.client_ip},
         )
 
     def format_api_zone_updated(self, event: ApiZoneUpdated) -> str:
@@ -196,10 +197,11 @@ class MessageFormatter:
                 change_lines.append(f"{k}={v}")
         return self._l10n.format_value(
             "api-zone-updated",
-            {"zone": event.zone_name, "domain": event.domain, "changes": "\n".join(change_lines), "ip": event.client_ip},
+            {"fqdn": build_fqdn(event.zone_name, event.domain), "changes": "\n".join(change_lines),
+             "ip": event.client_ip},
         )
 
     def format_api_zone_removed(self, event: ApiZoneRemoved) -> str:
         return self._l10n.format_value(
-            "api-zone-removed", {"zone": event.zone_name, "domain": event.domain, "ip": event.client_ip}
+            "api-zone-removed", {"fqdn": build_fqdn(event.zone_name, event.domain), "ip": event.client_ip}
         )

@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Dict, List, Optional, Set
 
 from .client import CloudflareClient
+from ..utils.dns import build_fqdn
 from ..utils.logger import get_logger
 
 if TYPE_CHECKING:
@@ -9,11 +10,11 @@ if TYPE_CHECKING:
 
 class DNSManager:
     def __init__(
-        self,
-        client: CloudflareClient,
-        notifier: Optional["TelegramNotifier"] = None,
-        notify_dns_changes: bool = True,
-        notify_errors: bool = True,
+            self,
+            client: CloudflareClient,
+            notifier: Optional["TelegramNotifier"] = None,
+            notify_dns_changes: bool = True,
+            notify_errors: bool = True,
     ):
         self.client = client
         self.logger = get_logger(__name__)
@@ -22,16 +23,16 @@ class DNSManager:
         self.notify_errors = notify_errors
 
     async def sync_dns_records(
-        self,
-        zone_id: str,
-        zone_name: str,
-        domain: str,
-        configured_ips: List[str],
-        healthy_ips: Set[str],
-        ttl: int = 120,
-        proxied: bool = False,
+            self,
+            zone_id: str,
+            zone_name: str,
+            domain: str,
+            configured_ips: List[str],
+            healthy_ips: Set[str],
+            ttl: int = 120,
+            proxied: bool = False,
     ) -> None:
-        full_domain = f"{zone_name}.{domain}"
+        full_domain = build_fqdn(zone_name, domain)
 
         existing_records = await self.client.get_dns_records(zone_id, name=full_domain, record_type="A")
         existing_ips = {record["content"] for record in existing_records}
@@ -44,19 +45,16 @@ class DNSManager:
         added_count = 0
         removed_count = 0
 
-        # Add records for healthy IPs that don't have a record yet
         for ip in healthy_configured_ips:
             if ip not in existing_ips:
                 if await self._add_record(zone_id, full_domain, domain, zone_name, ip, ttl, proxied):
                     added_count += 1
 
-        # Remove records for unhealthy IPs
         for ip in unhealthy_ips:
             if ip in existing_by_ip:
                 if await self._remove_record(zone_id, domain, zone_name, ip, existing_by_ip[ip]):
                     removed_count += 1
 
-        # Remove records for IPs not in config
         for ip, record in existing_by_ip.items():
             if ip not in configured_set:
                 if await self._remove_record(zone_id, domain, zone_name, ip, record):
@@ -71,7 +69,7 @@ class DNSManager:
                 self.logger.info(f"{full_domain}: {status}")
 
     async def _add_record(
-        self, zone_id: str, full_domain: str, domain: str, zone_name: str, ip: str, ttl: int, proxied: bool
+            self, zone_id: str, full_domain: str, domain: str, zone_name: str, ip: str, ttl: int, proxied: bool
     ) -> bool:
         try:
             await self.client.create_dns_record(
@@ -96,7 +94,7 @@ class DNSManager:
             return False
 
     async def _remove_record(self, zone_id: str, domain: str, zone_name: str, ip: str, record: dict) -> bool:
-        full_domain = f"{zone_name}.{domain}"
+        full_domain = build_fqdn(zone_name, domain)
         try:
             await self.client.delete_dns_record(zone_id, record["id"])
             self.logger.info(f"{full_domain}: removed {ip}")
@@ -118,7 +116,7 @@ class DNSManager:
             return False
 
     async def cleanup_zone(self, zone_id: str, zone_name: str, domain: str) -> None:
-        full_domain = f"{zone_name}.{domain}"
+        full_domain = build_fqdn(zone_name, domain)
         try:
             existing_records = await self.client.get_dns_records(zone_id, name=full_domain, record_type="A")
         except Exception as e:

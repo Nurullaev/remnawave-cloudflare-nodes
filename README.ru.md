@@ -72,12 +72,17 @@ remnawave:
 domains:
   - domain: example1.com
     zones:
-      - name: s1
+      - name: s1          # Создаёт s1.example1.com
         ttl: 60
         proxied: false
         ips:
           - 1.2.3.4
           - 5.6.7.8
+      - name: "@"         # Создаёт корневую запись для example1.com
+        ttl: 60
+        proxied: false
+        ips:
+          - 1.2.3.4
 
   - domain: example2.com
     zones:
@@ -106,6 +111,32 @@ api:
   port: 8741
   docs: false
 ```
+
+### Корневые (apex) записи домена
+
+Используйте `name: "@"`, чтобы создать A-запись для самого корневого домена (`example.com`), а не для поддомена:
+
+```yaml
+domains:
+  - domain: example.com
+    zones:
+      - name: "@"       # A-запись для example.com
+        ttl: 60
+        proxied: false
+        ips:
+          - 1.2.3.4
+      - name: sub       # A-запись для sub.example.com
+        ttl: 60
+        proxied: false
+        ips:
+          - 5.6.7.8
+```
+
+> **Важно:** При работе с apex-зонами через HTTP API необходимо URL-кодировать `@` как `%40` в пути запроса:
+> ```
+> PATCH /api/config/domains/example.com/zones/%40
+> DELETE /api/config/domains/example.com/zones/%40
+> ```
 
 ### Параметры
 
