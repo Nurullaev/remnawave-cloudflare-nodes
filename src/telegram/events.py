@@ -3,10 +3,20 @@ from typing import List, Optional
 
 
 @dataclass
+class ZoneStats:
+    name: str
+    total: int
+    online: int
+    offline: int
+
+
+@dataclass
 class NodeStats:
     total: int
     online: int
+    offline: int
     disabled: int
+    zones: List["ZoneStats"]
 
 
 @dataclass
@@ -72,7 +82,7 @@ class ApiConfigUpdated:
 @dataclass
 class ApiDomainAdded:
     domain: str
-    zone_count: int
+    zones: List[dict]
     client_ip: str
 
 
@@ -86,7 +96,9 @@ class ApiDomainRemoved:
 class ApiZoneAdded:
     domain: str
     zone_name: str
-    ip_count: int
+    ips: List[str]
+    ttl: int
+    proxied: bool
     client_ip: str
 
 
@@ -94,7 +106,7 @@ class ApiZoneAdded:
 class ApiZoneUpdated:
     domain: str
     zone_name: str
-    changes: List[str]
+    changes: dict
     client_ip: str
 
 

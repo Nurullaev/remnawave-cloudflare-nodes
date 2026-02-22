@@ -144,20 +144,69 @@ class MonitoringService:
         if not self.notifier or not self.config.telegram_notify_node_changes:
             return
 
-        from .telegram import NodeStateChange, NodeStats
+        from .telegram import NodeStateChange, NodeStats, ZoneStats
 
         total = len(nodes)
-        online = sum(1 for n in nodes if n.is_healthy)
         disabled = sum(1 for n in nodes if n.is_disabled)
-        stats = NodeStats(total=total, online=online, disabled=disabled)
+
+        # Build zone → IPs mapping from config
+        zone_ip_map: Dict[str, Set[str]] = {}
+        for zone in self.config.get_all_zones():
+            key = f"{zone['name']}.{zone['domain']}"
+            zone_ip_map[key] = set(zone["ips"])
+
+        # Group nodes by zone
+        zone_nodes: Dict[str, list] = {
+            key: [n for n in nodes if n.address in ips]
+            for key, ips in zone_ip_map.items()
+        }
+
+        # Start global and per-zone online counts from the *previous* known states.
+        # New nodes (not seen before) fall back to their current state so they don't
+        # fire a transition on first sight.
+        online = sum(1 for n in nodes if self._previous_node_states.get(n.address, n.is_healthy))
+        zone_online: Dict[str, int] = {
+            key: sum(1 for n in znodes if self._previous_node_states.get(n.address, n.is_healthy))
+            for key, znodes in zone_nodes.items()
+        }
 
         for node in nodes:
             prev_healthy = self._previous_node_states.get(node.address)
             curr_healthy = node.is_healthy
 
-            if prev_healthy is None or prev_healthy == curr_healthy:
+            if prev_healthy is None:
                 self._previous_node_states[node.address] = curr_healthy
                 continue
+
+            if prev_healthy == curr_healthy:
+                continue
+
+            # Apply this node's transition to the running counters before notifying,
+            # so each notification reflects the state after exactly this change.
+            delta = 1 if curr_healthy else -1
+            online += delta
+
+            node_zone: Optional[ZoneStats] = None
+            for key, ips in zone_ip_map.items():
+                if node.address in ips:
+                    zone_online[key] += delta
+                    node_zone = ZoneStats(
+                        name=key,
+                        total=len(zone_nodes[key]),
+                        online=zone_online[key],
+                        offline=len(zone_nodes[key]) - zone_online[key],
+                    )
+                    break
+
+            zones_stats = [node_zone] if node_zone else []
+
+            stats = NodeStats(
+                total=total,
+                online=online,
+                offline=total - online,
+                disabled=disabled,
+                zones=zones_stats,
+            )
 
             reason = None
             if not curr_healthy:

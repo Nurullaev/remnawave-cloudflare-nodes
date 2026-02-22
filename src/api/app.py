@@ -112,7 +112,9 @@ def create_app(config: Config, notifier: TelegramNotifier, monitoring_service: "
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
         logger.info(f"API: added domain '{body.domain}' with {len(body.zones)} zone(s) [from {ip}]")
-        notifier.notify_api_domain_added(ApiDomainAdded(domain=body.domain, zone_count=len(body.zones), client_ip=ip))
+        notifier.notify_api_domain_added(
+            ApiDomainAdded(domain=body.domain, zones=[z.model_dump() for z in body.zones], client_ip=ip)
+        )
         return {"status": "ok"}
 
     @app.delete("/api/config/domains/{domain}", dependencies=[Depends(auth)])
@@ -145,7 +147,10 @@ def create_app(config: Config, notifier: TelegramNotifier, monitoring_service: "
             f"[from {ip}]"
         )
         notifier.notify_api_zone_added(
-            ApiZoneAdded(domain=domain, zone_name=body.name, ip_count=len(body.ips), client_ip=ip)
+            ApiZoneAdded(
+                domain=domain, zone_name=body.name, ips=body.ips,
+                ttl=body.ttl, proxied=body.proxied, client_ip=ip,
+            )
         )
         return {"status": "ok"}
 
@@ -159,10 +164,10 @@ def create_app(config: Config, notifier: TelegramNotifier, monitoring_service: "
             config.update_zone(domain, zone_name, **updates)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-        changes = [f"{k}={v}" for k, v in updates.items()]
-        logger.info(f"API: updated zone '{zone_name}' of '{domain}' [{', '.join(changes)}] [from {ip}]")
+        log_parts = [f"ips={', '.join(v)}" if k == "ips" else f"{k}={v}" for k, v in updates.items()]
+        logger.info(f"API: updated zone '{zone_name}' of '{domain}' [{', '.join(log_parts)}] [from {ip}]")
         notifier.notify_api_zone_updated(
-            ApiZoneUpdated(domain=domain, zone_name=zone_name, changes=changes, client_ip=ip)
+            ApiZoneUpdated(domain=domain, zone_name=zone_name, changes=updates, client_ip=ip)
         )
         return {"status": "ok"}
 

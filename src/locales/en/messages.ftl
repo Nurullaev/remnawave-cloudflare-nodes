@@ -11,13 +11,13 @@ service-stopped = <b>🛑 Service Stopped</b>
 node-became-healthy = <b>✅ Node Online</b>
     { $name } ({ $address }) is now available.
 
-    📊 Nodes: { $online }/{ $total } online, { $disabled } disabled
+    { $stats }
 
 node-became-unhealthy = <b>❌ Node Offline</b>
     { $name } ({ $address }) is unavailable.
     Reason: { $reason }
 
-    📊 Nodes: { $online }/{ $total } online, { $disabled } disabled
+    { $stats }
 
 # DNS operations
 dns-record-added = <b>📝 DNS Updated</b>
@@ -45,13 +45,34 @@ all-nodes-recovered = <b>🟢 Recovered: Nodes Back Online</b>
     { $online } of { $total } nodes are now reachable.
     DNS records have been restored.
 
+# Format templates
+node-reason-unknown = unknown
+node-stats-line = 📊 Nodes: { $online }/{ $total } online, { $offline } offline, { $disabled } disabled
+node-zone-line = • { $zone }: { $online }/{ $total } online, { $offline } offline
+ip-list-item = • { $ip }
+service-summary-header = 📡 Domains:
+service-no-zones = —
+service-zone-line = • { $zone } — { $count } IPs
+service-api-info = 🔌 API: { $host }:{ $port }
+domain-zone-line = • { $zone } (TTL: { $ttl }, Proxied: { $proxied })
+zone-added-details =
+    IPs:
+    { $ip_list }
+    TTL: { $ttl } | Proxied: { $proxied }
+zone-change-ips =
+    IPs:
+    { $ip_list }
+zone-change-ttl = TTL: { $value }
+zone-change-proxied = Proxied: { $value }
+
 # API events
 api-config-updated = <b>⚙️ Config Updated via API</b>
     { $changes }
     From: { $ip }
 
 api-domain-added = <b>➕ Domain Added via API</b>
-    { $domain } ({ $zones } zone(s))
+    { $domain }
+    { $details }
     From: { $ip }
 
 api-domain-removed = <b>➖ Domain Removed via API</b>
@@ -59,7 +80,8 @@ api-domain-removed = <b>➖ Domain Removed via API</b>
     From: { $ip }
 
 api-zone-added = <b>➕ Zone Added via API</b>
-    { $zone }.{ $domain } ({ $ips } IP(s))
+    { $zone }.{ $domain }
+    { $details }
     From: { $ip }
 
 api-zone-updated = <b>⚙️ Zone Updated via API</b>
