@@ -1,5 +1,6 @@
 from .notifier import TelegramNotifier
 from .events import (
+    ZoneStats,
     NodeStats,
     NodeStateChange,
     DNSChange,
@@ -19,6 +20,7 @@ from .formatter import MessageFormatter
 
 __all__ = [
     "TelegramNotifier",
+    "ZoneStats",
     "NodeStats",
     "NodeStateChange",
     "DNSChange",

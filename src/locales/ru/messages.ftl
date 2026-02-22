@@ -11,13 +11,13 @@ service-stopped = <b>🛑 Сервис остановлен</b>
 node-became-healthy = <b>✅ Нода онлайн</b>
     { $name } ({ $address }) доступна.
 
-    📊 Ноды: { $online }/{ $total } онлайн, { $disabled } отключено
+    { $stats }
 
 node-became-unhealthy = <b>❌ Нода офлайн</b>
     { $name } ({ $address }) недоступна.
     Причина: { $reason }
 
-    📊 Ноды: { $online }/{ $total } онлайн, { $disabled } отключено
+    { $stats }
 
 # Операции DNS
 dns-record-added = <b>📝 DNS обновлен</b>
@@ -45,13 +45,34 @@ all-nodes-recovered = <b>🟢 Восстановление: Ноды снова 
     { $online } из { $total } нод снова доступны.
     DNS записи восстановлены.
 
+# Шаблоны форматирования
+node-reason-unknown = неизвестно
+node-stats-line = 📊 Ноды: { $online }/{ $total } онлайн, { $offline } офлайн, { $disabled } отключено
+node-zone-line = • { $zone }: { $online }/{ $total } онлайн, { $offline } офлайн
+ip-list-item = • { $ip }
+service-summary-header = 📡 Домены:
+service-no-zones = —
+service-zone-line = • { $zone } — { $count } IP-адресов
+service-api-info = 🔌 API: { $host }:{ $port }
+domain-zone-line = • { $zone } (TTL: { $ttl }, Проксировано: { $proxied })
+zone-added-details =
+    IP-адреса:
+    { $ip_list }
+    TTL: { $ttl } | Проксировано: { $proxied }
+zone-change-ips =
+    IP-адреса:
+    { $ip_list }
+zone-change-ttl = TTL: { $value }
+zone-change-proxied = Проксировано: { $value }
+
 # События API
 api-config-updated = <b>⚙️ Конфигурация обновлена через API</b>
     { $changes }
     От: { $ip }
 
 api-domain-added = <b>➕ Домен добавлен через API</b>
-    { $domain } ({ $zones } зон(а))
+    { $domain }
+    { $details }
     От: { $ip }
 
 api-domain-removed = <b>➖ Домен удален через API</b>
@@ -59,7 +80,8 @@ api-domain-removed = <b>➖ Домен удален через API</b>
     От: { $ip }
 
 api-zone-added = <b>➕ Зона добавлена через API</b>
-    { $zone }.{ $domain } ({ $ips } IP)
+    { $zone }.{ $domain }
+    { $details }
     От: { $ip }
 
 api-zone-updated = <b>⚙️ Зона обновлена через API</b>
