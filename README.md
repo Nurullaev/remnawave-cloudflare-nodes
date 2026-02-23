@@ -174,7 +174,8 @@ zones:
 ```
 
 - `ip` — the IP written to Cloudflare DNS.
-- `address` — the `node.address` used to find the node in Remnawave. Useful when nodes are accessed via Tailscale, a VPN, or any address that differs from the public IP. When omitted, defaults to `ip`.
+- `address` — the `node.address` used to find the node in Remnawave. Useful when nodes are accessed via Tailscale, a
+  VPN, or any address that differs from the public IP. When omitted, defaults to `ip`.
 
 Both formats can be mixed within the same zone or across different zones.
 
@@ -402,6 +403,33 @@ networks:
   remnawave-cloudflare-nodes:
     external: true
 ```
+
+### CLI
+
+An interactive CLI is available inside the container for quick diagnostics and config management:
+
+```bash
+docker exec -it remnawave-cloudflare-nodes cli
+```
+
+Use arrow keys to navigate and Enter to select:
+
+```
+  remnawave-cloudflare-nodes
+
+? Select action:
+ ❯ Show config
+   Validate config
+   Reload config (hot)
+   ──────────────────
+   Exit
+```
+
+| Option              | Description                                                      |
+|---------------------|------------------------------------------------------------------|
+| **Show config**     | Display current domains, zones, nodes and service settings       |
+| **Validate config** | Parse and validate `config.yml`, report errors or a zone summary |
+| **Reload config**   | Apply changes from `config.yml` without restarting the container |
 
 ### Logs
 

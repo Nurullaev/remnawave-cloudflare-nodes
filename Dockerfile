@@ -9,6 +9,8 @@ COPY src/ ./src/
 
 RUN mkdir -p logs
 
+RUN printf '#!/bin/sh\nexec python -m src.cli "$@"\n' > /usr/local/bin/cli && chmod +x /usr/local/bin/cli
+
 ENV PYTHONUNBUFFERED=1
 
 CMD ["python", "-m", "src"]
