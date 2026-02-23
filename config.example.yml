@@ -18,9 +18,13 @@ domains:
       - name: s2
         ttl: 60
         proxied: false
-        ips:
-          - 13.14.15.16
-          - 17.18.19.20
+        nodes:                   # Advanced format: map DNS IP to node address
+          - ip: 13.14.15.16
+            address: 100.64.0.1  # Tailscale/internal address in Remnawave
+          - ip: 17.18.19.20
+            address: 100.64.0.2
+        ips:                     # Mixed: plain IPs alongside nodes in the same zone
+          - 21.22.23.24
 
 logging:
   level: INFO # DEBUG, INFO, WARNING, ERROR, CRITICAL

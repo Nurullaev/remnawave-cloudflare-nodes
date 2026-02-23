@@ -108,12 +108,12 @@ def create_app(config: Config, notifier: TelegramNotifier, monitoring_service: "
     async def add_domain(request: Request, body: DomainIn):
         ip = _client_ip(request)
         try:
-            config.add_domain(domain=body.domain, zones=[z.model_dump() for z in body.zones])
+            config.add_domain(domain=body.domain, zones=[z.model_dump(exclude_none=True) for z in body.zones])
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
         logger.info(f"API: added domain '{body.domain}' with {len(body.zones)} zone(s) [from {ip}]")
         notifier.notify_api_domain_added(
-            ApiDomainAdded(domain=body.domain, zones=[z.model_dump() for z in body.zones], client_ip=ip)
+            ApiDomainAdded(domain=body.domain, zones=[z.model_dump(exclude_none=True) for z in body.zones], client_ip=ip)
         )
         return {"status": "ok"}
 
@@ -137,18 +137,19 @@ def create_app(config: Config, notifier: TelegramNotifier, monitoring_service: "
     async def add_zone(request: Request, domain: str, body: ZoneIn):
         ip = _client_ip(request)
         try:
-            config.add_zone(domain, body.model_dump())
+            config.add_zone(domain, body.model_dump(exclude_none=True))
         except ValueError as e:
             code = status.HTTP_409_CONFLICT if "already exists" in str(e) else status.HTTP_404_NOT_FOUND
             raise HTTPException(status_code=code, detail=str(e))
+        all_ips = [n.ip for n in (body.nodes or [])] + list(body.ips or [])
         logger.info(
             f"API: added zone '{body.name}' to '{domain}' "
-            f"[{len(body.ips)} IP(s), ttl={body.ttl}, proxied={body.proxied}] "
+            f"[{len(all_ips)} node(s), ttl={body.ttl}, proxied={body.proxied}] "
             f"[from {ip}]"
         )
         notifier.notify_api_zone_added(
             ApiZoneAdded(
-                domain=domain, zone_name=body.name, ips=body.ips,
+                domain=domain, zone_name=body.name, ips=all_ips,
                 ttl=body.ttl, proxied=body.proxied, client_ip=ip,
             )
         )
@@ -157,14 +158,21 @@ def create_app(config: Config, notifier: TelegramNotifier, monitoring_service: "
     @app.patch("/api/config/domains/{domain}/zones/{zone_name}", dependencies=[Depends(auth)])
     async def patch_zone(request: Request, domain: str, zone_name: str, body: ZonePatch):
         ip = _client_ip(request)
-        updates = {k: v for k, v in body.model_dump().items() if v is not None}
+        updates = body.model_dump(exclude_none=True)
         if not updates:
             return {"status": "ok"}
         try:
             config.update_zone(domain, zone_name, **updates)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-        log_parts = [f"ips={', '.join(v)}" if k == "ips" else f"{k}={v}" for k, v in updates.items()]
+        log_parts = []
+        for k, v in updates.items():
+            if k == "ips":
+                log_parts.append(f"ips={', '.join(v)}")
+            elif k == "nodes":
+                log_parts.append(f"nodes={len(v)} entry(s)")
+            else:
+                log_parts.append(f"{k}={v}")
         logger.info(f"API: updated zone '{zone_name}' of '{domain}' [{', '.join(log_parts)}] [from {ip}]")
         notifier.notify_api_zone_updated(
             ApiZoneUpdated(domain=domain, zone_name=zone_name, changes=updates, client_ip=ip)

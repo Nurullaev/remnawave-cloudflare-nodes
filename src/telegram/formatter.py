@@ -117,10 +117,10 @@ class MessageFormatter:
         for domain_conf in event.domains:
             domain = domain_conf.get("domain", "")
             for zone in domain_conf.get("zones") or []:
-                ips = zone.get("ips", [])
+                node_count = len(zone.get("nodes") or []) + len(zone.get("ips") or [])
                 zone_lines.append(self._l10n.format_value("service-zone-line", {
                     "zone": build_fqdn(zone['name'], domain),
-                    "count": len(ips),
+                    "count": node_count,
                 }))
 
         header = self._label("service-summary-header")
@@ -147,7 +147,6 @@ class MessageFormatter:
         lines = []
         for zone in event.zones:
             name = zone.get("name", "")
-            ips = zone.get("ips", [])
             ttl = zone.get("ttl", "")
             proxied = zone.get("proxied", False)
             lines.append(self._l10n.format_value("domain-zone-line", {
@@ -155,7 +154,9 @@ class MessageFormatter:
                 "ttl": ttl,
                 "proxied": proxied,
             }))
-            for ip in ips:
+            for entry in zone.get("nodes") or []:
+                lines.append("  " + self._l10n.format_value("ip-list-item", {"ip": entry.get("ip", "")}))
+            for ip in zone.get("ips") or []:
                 lines.append("  " + self._l10n.format_value("ip-list-item", {"ip": ip}))
         details = "\n".join(lines)
         return self._l10n.format_value(
@@ -187,6 +188,11 @@ class MessageFormatter:
             if k == "ips":
                 ip_list = "\n".join(
                     self._l10n.format_value("ip-list-item", {"ip": ip}) for ip in v
+                )
+                change_lines.append(self._l10n.format_value("zone-change-ips", {"ip_list": ip_list}))
+            elif k == "nodes":
+                ip_list = "\n".join(
+                    self._l10n.format_value("ip-list-item", {"ip": n.get("ip", "")}) for n in v
                 )
                 change_lines.append(self._l10n.format_value("zone-change-ips", {"ip_list": ip_list}))
             elif k == "ttl":

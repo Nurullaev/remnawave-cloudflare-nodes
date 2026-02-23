@@ -1,19 +1,32 @@
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+
+class NodeIn(BaseModel):
+    ip: str                         # IP to write into Cloudflare DNS
+    address: Optional[str] = None  # node.address to match in Remnawave (e.g. Tailscale IP); defaults to ip
 
 
 class ZoneIn(BaseModel):
     name: str
     ttl: int = Field(default=120, ge=1)
     proxied: bool = False
-    ips: List[str] = Field(min_length=1)
+    ips: Optional[List[str]] = None
+    nodes: Optional[List[NodeIn]] = None
+
+    @model_validator(mode="after")
+    def validate_has_entries(self) -> "ZoneIn":
+        if not self.ips and not self.nodes:
+            raise ValueError("At least one of 'ips' or 'nodes' must be provided")
+        return self
 
 
 class ZonePatch(BaseModel):
     ttl: Optional[int] = Field(default=None, ge=1)
     proxied: Optional[bool] = None
     ips: Optional[List[str]] = Field(default=None, min_length=1)
+    nodes: Optional[List[NodeIn]] = None
 
 
 class DomainIn(BaseModel):
