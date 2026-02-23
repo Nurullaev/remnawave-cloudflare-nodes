@@ -56,6 +56,52 @@ PATCH /api/config/domains/example.com/zones/%40
 
 ---
 
+## Zone node formats
+
+Zones support two formats for specifying which nodes to monitor.
+
+**`ips` — simple list of IPs**
+
+```json
+{
+  "name": "s1",
+  "ttl": 60,
+  "ips": [
+    "1.2.3.4",
+    "5.6.7.8"
+  ]
+}
+```
+
+Each IP is both written to Cloudflare DNS and used to look up the node in Remnawave.
+
+**`nodes` — advanced with separate addresses**
+
+```json
+{
+  "name": "s1",
+  "ttl": 60,
+  "nodes": [
+    {
+      "ip": "1.2.3.4",
+      "address": "100.64.0.1"
+    },
+    {
+      "ip": "5.6.7.8",
+      "address": "100.64.0.2"
+    }
+  ]
+}
+```
+
+- `ip` — the value written to Cloudflare DNS.
+- `address` — the `node.address` used to find the node in Remnawave (e.g. a Tailscale IP). When omitted, defaults to
+  `ip`.
+
+Both formats can be used within the same zone or across different zones.
+
+---
+
 ## Endpoints
 
 ### GET `/api/config`
@@ -186,6 +232,17 @@ Add a new domain with one or more zones.
       ]
     },
     {
+      "name": "s2",
+      "ttl": 60,
+      "proxied": false,
+      "nodes": [
+        {
+          "ip": "9.10.11.12",
+          "address": "100.64.0.1"
+        }
+      ]
+    },
+    {
       "name": "@",
       "ttl": 60,
       "proxied": false,
@@ -197,14 +254,19 @@ Add a new domain with one or more zones.
 }
 ```
 
-| Field             | Type    | Constraints                                   |
-|-------------------|---------|-----------------------------------------------|
-| `domain`          | string  | required                                      |
-| `zones`           | array   | at least 1 zone                               |
-| `zones[].name`    | string  | required; use `"@"` for apex/root DNS records |
-| `zones[].ttl`     | integer | `>= 1`, default `120`                         |
-| `zones[].proxied` | boolean | default `false`                               |
-| `zones[].ips`     | array   | at least 1 IP                                 |
+| Field                     | Type    | Constraints                                   |
+|---------------------------|---------|-----------------------------------------------|
+| `domain`                  | string  | required                                      |
+| `zones`                   | array   | at least 1 zone                               |
+| `zones[].name`            | string  | required; use `"@"` for apex/root DNS records |
+| `zones[].ttl`             | integer | `>= 1`, default `120`                         |
+| `zones[].proxied`         | boolean | default `false`                               |
+| `zones[].ips`             | array   | list of IPs (simple format)                   |
+| `zones[].nodes`           | array   | list of node objects (advanced format)        |
+| `zones[].nodes[].ip`      | string  | required; IP written to Cloudflare DNS        |
+| `zones[].nodes[].address` | string  | node address in Remnawave; defaults to `ip`   |
+
+At least one of `ips` or `nodes` must be provided per zone.
 
 **Response** — `201 Created`
 
@@ -261,8 +323,11 @@ POST /api/config/domains/example.com/zones
   "name": "s2",
   "ttl": 60,
   "proxied": false,
-  "ips": [
-    "9.10.11.12"
+  "nodes": [
+    {
+      "ip": "9.10.11.12",
+      "address": "100.64.0.1"
+    }
   ]
 }
 ```
@@ -311,11 +376,14 @@ PATCH /api/config/domains/example.com/zones/s1
 }
 ```
 
-| Field     | Type    | Constraints   |
-|-----------|---------|---------------|
-| `ttl`     | integer | `>= 1`        |
-| `proxied` | boolean |               |
-| `ips`     | array   | at least 1 IP |
+| Field             | Type    | Constraints                                 |
+|-------------------|---------|---------------------------------------------|
+| `ttl`             | integer | `>= 1`                                      |
+| `proxied`         | boolean |                                             |
+| `ips`             | array   | at least 1 IP (replaces all existing IPs)   |
+| `nodes`           | array   | list of node objects (replaces all nodes)   |
+| `nodes[].ip`      | string  | required; IP written to Cloudflare DNS      |
+| `nodes[].address` | string  | node address in Remnawave; defaults to `ip` |
 
 **Response**
 

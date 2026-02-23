@@ -260,17 +260,48 @@ class Config:
                     "Generate one with: openssl rand -hex 32"
                 )
 
+    @staticmethod
+    def _parse_zone_nodes(zone: dict) -> list:
+        """Normalize a zone's node entries from either 'nodes' or legacy 'ips' format.
+
+        Each returned entry has:
+          ip      – the IP to write into Cloudflare DNS
+          address – the node.address to match in Remnawave (defaults to ip)
+        """
+        result = []
+
+        for entry in zone.get("nodes") or []:
+            if not isinstance(entry, dict):
+                continue
+            ip = entry.get("ip")
+            if not ip:
+                continue
+            result.append({
+                "ip": ip,
+                "address": entry.get("address") or ip,
+            })
+
+        for ip in zone.get("ips") or []:
+            result.append({
+                "ip": ip,
+                "address": ip,
+            })
+
+        return result
+
     def get_all_zones(self) -> list:
         zones = []
         for domain_config in self.domains:
             domain = domain_config.get("domain")
             for zone in domain_config.get("zones") or []:
+                nodes = self._parse_zone_nodes(zone)
                 zone_data = {
                     "domain": domain,
                     "name": zone.get("name"),
                     "ttl": zone.get("ttl", 120),
                     "proxied": zone.get("proxied", False),
-                    "ips": zone.get("ips", []),
+                    "nodes": nodes,
+                    "ips": [n["ip"] for n in nodes],  # backward-compat: list of DNS IPs
                 }
                 zones.append(zone_data)
         return zones

@@ -24,6 +24,7 @@ Automatically manage Cloudflare DNS records based on Remnawave (https://docs.rw)
 - **Multi-Domain Support** - Manage multiple domains with multiple DNS zones each
 - **Telegram Notifications** - Real-time alerts for node status changes, DNS updates, and critical events
 - **HTTP API** - Manage configuration at runtime via a secured REST API
+- **Tailscale / Alternate Addresses** - Map public DNS IPs to internal node addresses (Tailscale, VPN, NAT)
 - **Configurable Intervals** - Set custom health check intervals
 - **Docker Ready** - Easy deployment with Docker and Docker Compose
 
@@ -141,6 +142,41 @@ domains:
 > PATCH /api/config/domains/example.com/zones/%40
 > DELETE /api/config/domains/example.com/zones/%40
 > ```
+
+### Node formats
+
+Zones support two formats for specifying which nodes to monitor.
+
+**`ips` — simple list of IPs**
+
+```yaml
+zones:
+  - name: s1
+    ttl: 60
+    ips:
+      - 1.2.3.4
+      - 5.6.7.8
+```
+
+Each IP is both written to Cloudflare DNS and matched against `node.address` in Remnawave.
+
+**`nodes` — advanced with separate addresses**
+
+```yaml
+zones:
+  - name: s1
+    ttl: 60
+    nodes:
+      - ip: 1.2.3.4
+        address: 100.64.0.1  # Tailscale or internal address in Remnawave
+      - ip: 5.6.7.8
+        address: 100.64.0.2
+```
+
+- `ip` — the IP written to Cloudflare DNS.
+- `address` — the `node.address` used to find the node in Remnawave. Useful when nodes are accessed via Tailscale, a VPN, or any address that differs from the public IP. When omitted, defaults to `ip`.
+
+Both formats can be mixed within the same zone or across different zones.
 
 ### Configuration Reference
 
@@ -260,9 +296,9 @@ python -m src
     - Node must not be disabled (`is_disabled = false`)
     - Node must have Xray installed (`xray_version` is not null)
 
-3. **DNS Synchronization** - For each configured zone:
-    - Adds DNS A records for IPs that are both configured AND healthy
-    - Removes DNS A records for IPs that are no longer healthy
+3. **DNS Synchronization** - For each configured zone, matches each entry's `address` to node health status, then:
+    - Adds DNS A records for IPs whose nodes are healthy
+    - Removes DNS A records for IPs whose nodes are no longer healthy
 
 4. **Continuous Updates** - The service polls the Remnawave API at the configured interval (`check-interval`) and
    updates DNS records
