@@ -69,7 +69,7 @@ class CloudflareClient:
             try:
                 await self._rate_limit()
                 record = await self.cf.dns.records.create(  # type: ignore[call-overload]
-                    zone_id=zone_id, type=record_type, name=name, content=content, ttl=float(ttl), proxied=proxied
+                    zone_id=zone_id, type=record_type, name=name, content=content, ttl=int(ttl), proxied=proxied
                 )
                 self.logger.info(f"Created DNS record: {name} -> {content}")
                 return {
@@ -111,7 +111,7 @@ class CloudflareClient:
                     type=record_type,
                     name=name,
                     content=content,
-                    ttl=float(ttl),
+                    ttl=int(ttl),
                     proxied=proxied,
                 )
                 self.logger.info(f"Updated DNS record: {name} -> {content}")
