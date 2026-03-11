@@ -141,6 +141,9 @@ class Config:
     def telegram_notify_api_changes(self) -> bool:
         return self.get("telegram.notify.api_changes", True)
 
+    def reload(self) -> None:
+        self._config = self._load_config()
+
     # --- Config mutation methods ---
 
     def update_check_interval(self, interval: int) -> None:
