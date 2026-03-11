@@ -25,7 +25,7 @@ def action_show():
     zones = config.get_all_zones()
 
     api_info = f" ({config.api_host}:{config.api_port})" if config.api_enabled else ""
-    tg_info = f" (locale={config.telegram_locale})" if config.telegram_enabled else ""
+    tg_info = f" (language={config.language})" if config.telegram_enabled else ""
 
     _print_separator()
     print("  Service")

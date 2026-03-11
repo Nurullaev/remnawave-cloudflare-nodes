@@ -6,6 +6,7 @@ import uvicorn
 
 from .cloudflare_dns import CloudflareClient, DNSManager
 from .config import Config
+from .i18n import get_translator
 from .monitoring_service import MonitoringService
 from .remnawave import RemnawaveClient, NodeMonitor
 from .telegram import TelegramNotifier, ServiceStarted
@@ -71,6 +72,8 @@ async def main():
 
     loop.add_signal_handler(signal.SIGHUP, handle_sighup)
 
+    get_translator(config.language)
+
     logger.info("Starting Remnawave-Cloudflare DNS Monitor")
     logger.info(f"Check interval: {config.check_interval}s")
 
@@ -82,7 +85,6 @@ async def main():
         bot_token=config.telegram_bot_token,
         chat_id=config.telegram_chat_id,
         topic_id=config.telegram_topic_id,
-        locale=config.telegram_locale,
         enabled=config.telegram_enabled,
         notify_api_changes=config.telegram_notify_api_changes,
     )

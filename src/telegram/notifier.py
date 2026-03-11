@@ -22,7 +22,6 @@ class TelegramNotifier:
             bot_token: str,
             chat_id: str,
             topic_id: Optional[int] = None,
-            locale: str = "en",
             enabled: bool = True,
             notify_api_changes: bool = True,
             queue_size: int = 100,
@@ -50,9 +49,9 @@ class TelegramNotifier:
                 token=bot_token,
                 default=DefaultBotProperties(parse_mode=ParseMode.HTML),
             )
-            self._formatter = MessageFormatter(locale=locale)
+            self._formatter = MessageFormatter()
             topic_info = f", topic_id={topic_id}" if topic_id else ""
-            self.logger.info(f"TelegramNotifier initialized with locale={locale}{topic_info}")
+            self.logger.info(f"TelegramNotifier initialized{topic_info}")
         else:
             self.enabled = False
             self.logger.info("TelegramNotifier is disabled")
