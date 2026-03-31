@@ -14,7 +14,7 @@ class NodeStatus:
             is_connected: bool,
             is_disabled: bool,
             xray_version: Optional[str],
-            xray_uptime: Optional[int] = None,
+            xray_uptime: Optional[float] = None,
             port: Optional[int] = None,
             users_online: int = 0,
             uuid: Optional[str] = None,
