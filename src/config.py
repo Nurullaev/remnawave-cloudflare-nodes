@@ -118,8 +118,8 @@ class Config:
         return os.getenv("TIME_FORMAT", "%d.%m.%Y %H:%M:%S")
 
     @property
-    def telegram_locale(self) -> str:
-        return self.get("telegram.locale", "en")
+    def language(self) -> str:
+        return os.getenv("LANGUAGE", "en")
 
     @property
     def telegram_notify_dns_changes(self) -> bool:
@@ -140,6 +140,9 @@ class Config:
     @property
     def telegram_notify_api_changes(self) -> bool:
         return self.get("telegram.notify.api_changes", True)
+
+    def reload(self) -> None:
+        self._config = self._load_config()
 
     # --- Config mutation methods ---
 

@@ -44,7 +44,6 @@ class TelegramNotifyPatch(BaseModel):
 
 class TelegramPatch(BaseModel):
     enabled: Optional[bool] = None
-    locale: Optional[str] = Field(default=None, pattern="^(en|ru)$")
     notify: Optional[TelegramNotifyPatch] = None
 
 

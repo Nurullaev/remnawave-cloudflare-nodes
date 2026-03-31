@@ -51,7 +51,7 @@ def create_app(config: Config, notifier: TelegramNotifier, monitoring_service: "
             "domains": config.domains,
             "telegram": {
                 "enabled": config.telegram_enabled,
-                "locale": config.telegram_locale,
+                "language": config.language,
                 "notify": {
                     "dns_changes": config.telegram_notify_dns_changes,
                     "node_changes": config.telegram_notify_node_changes,
@@ -81,9 +81,6 @@ def create_app(config: Config, notifier: TelegramNotifier, monitoring_service: "
             if tg.enabled is not None:
                 kwargs["enabled"] = tg.enabled
                 changes.append(f"telegram.enabled={tg.enabled}")
-            if tg.locale is not None:
-                kwargs["locale"] = tg.locale
-                changes.append(f"telegram.locale={tg.locale}")
             if tg.notify is not None:
                 notify = {k: v for k, v in tg.notify.model_dump().items() if v is not None}
                 if notify:
