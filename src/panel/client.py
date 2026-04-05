@@ -17,8 +17,7 @@ class RemnawaveClient:
         try:
             self.logger.info(f"Fetching nodes from {self.api_url}")
 
-            response = await self.sdk.nodes.get_all_nodes()
-
+            response = await self.sdk.nodes.get_all_nodes() # GetAllNodesResponseDto
             nodes_list = response.root if hasattr(response, "root") else []
 
             self.logger.info(f"Successfully fetched {len(nodes_list)} nodes")
@@ -29,7 +28,7 @@ class RemnawaveClient:
 
     @staticmethod
     def is_node_connected(node: NodeResponseDto) -> bool:
-        return node.is_connected and node.xray_version is not None
+        return node.is_connected
 
     @staticmethod
     def is_node_disabled(node: NodeResponseDto) -> bool:

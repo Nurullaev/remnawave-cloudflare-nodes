@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Set
 
 from .cloudflare_dns import CloudflareClient, DNSManager
 from .config import Config
-from .remnawave import NodeMonitor
+from .panel import NodeMonitor
 from .utils.dns import build_fqdn
 from .utils.logger import get_logger
 

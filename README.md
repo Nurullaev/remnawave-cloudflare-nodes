@@ -14,6 +14,9 @@
 
 English | [Русский](README.ru.md)
 
+> Logging, API, and Telegram settings have moved from `config.yml` to `.env`.
+> See the [Migration Guide](docs/MIGRATION.md).
+
 Automatically manage Cloudflare DNS records based on Remnawave (https://docs.rw) node health status.
 
 ## Features
@@ -49,21 +52,34 @@ REMNAWAVE_API_KEY=remnawave_api_key
 # Cloudflare token with DNS edit permissions
 CLOUDFLARE_API_TOKEN=cloudflare_api_token
 
-# Telegram bot token from @BotFather
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-# Chat ID (get from @username_to_id_bot)
-TELEGRAM_CHAT_ID=123456789
-# Forum topic ID (leave empty for regular chats)
-TELEGRAM_TOPIC_ID=
+# API
+API_ENABLED=false
+API_TOKEN=  # Generate a strong random value: openssl rand -hex 32
+API_HOST=0.0.0.0
+API_PORT=8741
+API_DOCS=false
 
+# Telegram notifications
+TELEGRAM_ENABLED=false
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_CHAT_ID=123456789
+TELEGRAM_TOPIC_ID=  # Forum topic ID (leave empty for regular chats)
+
+# Notification filters
+TELEGRAM_NOTIFY_NODE_CHANGES=true
+TELEGRAM_NOTIFY_DNS_CHANGES=true
+TELEGRAM_NOTIFY_ERRORS=true
+TELEGRAM_NOTIFY_CRITICAL=true
+TELEGRAM_NOTIFY_API_CHANGES=true
+
+# Language for notifications (en, ru)
+LANGUAGE=en
 # Timezone (e.g. UTC, Europe/Moscow, America/New_York)
 TIMEZONE=UTC
 # Time format: %d-day, %m-month, %Y-year, %H-hour, %M-min, %S-sec
 TIME_FORMAT="%d.%m.%Y %H:%M:%S"
-
-# API server token (required when api.enabled: true in config.yml)
-# Generate with: openssl rand -hex 32
-API_TOKEN=
+# Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+LOG_LEVEL=INFO
 ```
 
 Copy [`config.example.yml`](config.example.yml) to `config.yml` and configure your domains:
@@ -97,24 +113,6 @@ domains:
         ips:
           - 13.14.15.16
           - 17.18.19.20
-
-logging:
-  level: INFO # DEBUG, INFO, WARNING, ERROR, CRITICAL
-
-telegram:
-  enabled: false
-  locale: en  # en, ru
-  notify:
-    node_changes: true  # Node online/offline
-    dns_changes: true   # DNS record changes
-    errors: true        # Error alerts
-    critical: true      # All nodes down alert
-
-api:
-  enabled: false
-  host: "0.0.0.0"
-  port: 8741
-  docs: false
 ```
 
 ### Apex (root) domain records
@@ -181,36 +179,38 @@ Both formats can be mixed within the same zone or across different zones.
 
 ### Configuration Reference
 
-#### Environment variables
+#### Environment variables (.env)
 
-| Variable               | Description                                    | Default             | Required         |
-|------------------------|------------------------------------------------|---------------------|------------------|
-| `REMNAWAVE_API_URL`    | Remnawave API endpoint                         | -                   | Yes              |
-| `REMNAWAVE_API_KEY`    | Remnawave API token                            | -                   | Yes              |
-| `CLOUDFLARE_API_TOKEN` | Cloudflare API token with DNS edit permissions | -                   | Yes              |
-| `TELEGRAM_BOT_TOKEN`   | Telegram bot token from @BotFather             | -                   | No               |
-| `TELEGRAM_CHAT_ID`     | Chat ID for notifications                      | -                   | No               |
-| `TELEGRAM_TOPIC_ID`    | Forum topic ID (for supergroups with topics)   | -                   | No               |
-| `TIMEZONE`             | Timezone for timestamps (e.g. Europe/Moscow)   | `UTC`               | No               |
-| `TIME_FORMAT`          | Time format for timestamps                     | `%d.%m.%Y %H:%M:%S` | No               |
-| `API_TOKEN`            | API auth token — must be 64-char hex string    | -                   | When API enabled |
+| Variable                       | Description                                    | Default             | Required         |
+|--------------------------------|------------------------------------------------|---------------------|------------------|
+| `REMNAWAVE_API_URL`            | Remnawave API endpoint                         | -                   | Yes              |
+| `REMNAWAVE_API_KEY`            | Remnawave API token                            | -                   | Yes              |
+| `CLOUDFLARE_API_TOKEN`         | Cloudflare API token with DNS edit permissions | -                   | Yes              |
+| `LOG_LEVEL`                    | Log level (`DEBUG` `INFO` `WARNING` `ERROR`)   | `INFO`              | No               |
+| `API_ENABLED`                  | Enable the HTTP API server                     | `false`             | No               |
+| `API_HOST`                     | Address to bind the API server                 | `0.0.0.0`           | No               |
+| `API_PORT`                     | Port for the API server                        | `8741`              | No               |
+| `API_DOCS`                     | Enable Swagger UI at `/api/docs`               | `false`             | No               |
+| `API_TOKEN`                    | API auth token — must be 64-char hex string    | -                   | When API enabled |
+| `TELEGRAM_ENABLED`             | Enable Telegram notifications                  | `false`             | No               |
+| `TELEGRAM_BOT_TOKEN`           | Telegram bot token from @BotFather             | -                   | No               |
+| `TELEGRAM_CHAT_ID`             | Chat ID for notifications                      | -                   | No               |
+| `TELEGRAM_TOPIC_ID`            | Forum topic ID (for supergroups with topics)   | -                   | No               |
+| `TELEGRAM_NOTIFY_NODE_CHANGES` | Notify on node status changes                  | `true`              | No               |
+| `TELEGRAM_NOTIFY_DNS_CHANGES`  | Notify on DNS record changes                   | `true`              | No               |
+| `TELEGRAM_NOTIFY_ERRORS`       | Notify on errors                               | `true`              | No               |
+| `TELEGRAM_NOTIFY_CRITICAL`     | Notify when all nodes go down                  | `true`              | No               |
+| `TELEGRAM_NOTIFY_API_CHANGES`  | Notify on HTTP API config changes              | `true`              | No               |
+| `LANGUAGE`                     | Notification language (`en`, `ru`)             | `en`                | No               |
+| `TIMEZONE`                     | Timezone for timestamps (e.g. Europe/Moscow)   | `UTC`               | No               |
+| `TIME_FORMAT`                  | Time format for timestamps                     | `%d.%m.%Y %H:%M:%S` | No               |
 
 #### config.yml
 
-| Key                            | Description                                  | Default   | Required |
-|--------------------------------|----------------------------------------------|-----------|----------|
-| `remnawave.check-interval`     | Interval in seconds between health checks    | `30`      | No       |
-| `logging.level`                | Log level (`DEBUG` `INFO` `WARNING` `ERROR`) | `INFO`    | No       |
-| `telegram.enabled`             | Enable Telegram notifications                | `false`   | No       |
-| `telegram.locale`              | Notification language (`en`, `ru`)           | `en`      | No       |
-| `telegram.notify.node_changes` | Notify on node status changes                | `true`    | No       |
-| `telegram.notify.dns_changes`  | Notify on DNS record changes                 | `true`    | No       |
-| `telegram.notify.errors`       | Notify on errors                             | `true`    | No       |
-| `telegram.notify.critical`     | Notify when all nodes go down                | `true`    | No       |
-| `api.enabled`                  | Enable the HTTP API server                   | `false`   | No       |
-| `api.host`                     | Address to bind the API server               | `0.0.0.0` | No       |
-| `api.port`                     | Port for the API server                      | `8741`    | No       |
-| `api.docs`                     | Enable Swagger UI at `/api/docs`             | `false`   | No       |
+| Key                        | Description                               | Default | Required |
+|----------------------------|-------------------------------------------|---------|----------|
+| `remnawave.check-interval` | Interval in seconds between health checks | `30`    | No       |
+| `domains`                  | List of domains and DNS zones to manage   | `[]`    | Yes      |
 
 ## Installation
 
@@ -315,20 +315,14 @@ The service can send real-time notifications to Telegram when events occur.
 1. Create a bot with [@BotFather](https://t.me/BotFather) and get the token
 2. Get your chat ID from [@username_to_id_bot](https://t.me/username_to_id_bot)
 3. Add the bot to your chat/group
-4. Configure environment variables:
+4. Configure in `.env`:
 
 ```env
+TELEGRAM_ENABLED=true
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 TELEGRAM_CHAT_ID=123456789
 TELEGRAM_TOPIC_ID=              # Optional: for forum topics
-```
-
-5. Enable in `config.yml`:
-
-```yaml
-telegram:
-  enabled: true
-  locale: en  # en, ru
+LANGUAGE=en                     # en, ru
 ```
 
 ### Notification Types
@@ -346,17 +340,14 @@ telegram:
 
 ### Configure Notifications
 
-You can enable/disable specific notification types:
+You can enable/disable specific notification types in `.env`:
 
-```yaml
-telegram:
-  enabled: true
-  locale: en
-  notify:
-    node_changes: true  # Node online/offline events
-    dns_changes: true   # DNS record add/remove
-    errors: true        # Error alerts
-    critical: true      # All nodes down alert
+```env
+TELEGRAM_NOTIFY_NODE_CHANGES=true   # Node online/offline events
+TELEGRAM_NOTIFY_DNS_CHANGES=true    # DNS record add/remove
+TELEGRAM_NOTIFY_ERRORS=true         # Error alerts
+TELEGRAM_NOTIFY_CRITICAL=true       # All nodes down alert
+TELEGRAM_NOTIFY_API_CHANGES=true    # HTTP API config changes
 ```
 
 ## HTTP API
@@ -373,20 +364,14 @@ See **[docs/API.md](docs/API.md)** for the full API reference.
 openssl rand -hex 32
 ```
 
-2. Add it to `.env`:
+2. Enable in `.env`:
 
 ```env
+API_ENABLED=true
 API_TOKEN=<generated token>
-```
-
-3. Enable in `config.yml`:
-
-```yaml
-api:
-  enabled: true
-  host: "0.0.0.0"
-  port: 8741
-  docs: false
+API_HOST=0.0.0.0
+API_PORT=8741
+API_DOCS=false
 ```
 
 ### Reverse proxy
@@ -442,6 +427,10 @@ docker compose logs -f
 # Manual
 # Logs are output to stdout and logs/app.log
 ```
+
+## Migration
+
+Upgrading from an older version? See the [Migration Guide](docs/MIGRATION.md).
 
 ## License
 

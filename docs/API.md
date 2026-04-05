@@ -3,25 +3,18 @@
 The service exposes an optional REST API for managing `config.yml` at runtime without restarting the container. All
 changes are written to disk immediately and take effect on the next monitoring cycle.
 
-Swagger UI is available at `http://<host>:<port>/api/docs` when both the API and `api.docs` are enabled.
+Swagger UI is available at `http://<host>:<port>/api/docs` when both `API_ENABLED` and `API_DOCS` are set to `true`.
 
 ## Setup
-
-**`config.yml`**
-
-```yaml
-api:
-  enabled: true
-  host: "0.0.0.0"
-  port: 8741
-  docs: false  # set to true to enable Swagger UI at /api/docs
-```
 
 **`.env`**
 
 ```env
-# Generate with: openssl rand -hex 32
-API_TOKEN=your64charhextoken
+API_ENABLED=false
+API_TOKEN=  # Generate a strong random value: openssl rand -hex 32
+API_HOST=0.0.0.0
+API_PORT=8741
+API_DOCS=false
 ```
 
 If `API_TOKEN` is missing or not a 64-character lowercase hex string the service will refuse to start.
@@ -146,34 +139,22 @@ Returns the current configuration (no secrets are exposed).
 
 ### PATCH `/api/config`
 
-Update global settings. All fields are optional — only provided fields are changed.
+Update runtime settings stored in `config.yml`. All fields are optional — only provided fields are changed.
+
+> **Note:** Settings like `log_level`, `telegram`, and `api` are configured via environment variables and cannot be
+> changed through this endpoint.
 
 **Request body**
 
 ```json
 {
-  "check_interval": 60,
-  "log_level": "DEBUG",
-  "telegram": {
-    "enabled": true,
-    "locale": "ru",
-    "notify": {
-      "dns_changes": true,
-      "node_changes": false,
-      "errors": true,
-      "critical": true
-    }
-  }
+  "check_interval": 60
 }
 ```
 
-| Field               | Type    | Constraints                         |
-|---------------------|---------|-------------------------------------|
-| `check_interval`    | integer | `>= 5`                              |
-| `log_level`         | string  | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `telegram.enabled`  | boolean |                                     |
-| `telegram.locale`   | string  | `en`, `ru`                          |
-| `telegram.notify.*` | boolean |                                     |
+| Field            | Type    | Constraints |
+|------------------|---------|-------------|
+| `check_interval` | integer | `>= 5`      |
 
 **Response**
 

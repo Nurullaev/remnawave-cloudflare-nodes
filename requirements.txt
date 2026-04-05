@@ -1,9 +1,9 @@
-python-dotenv>=1.2.1
-remnawave>=2.4.4
+python-dotenv>=1.2.2
+remnawave>=2.7.0
 cloudflare>=4.3.1
 pyyaml>=6.0.3
-aiogram>=3.24.0
+aiogram>=3.26.0
 fluent.runtime>=0.4.0
-fastapi==0.129.0
-uvicorn==0.41.0
-questionary>=2.0.1
+fastapi==0.135.2
+uvicorn==0.42.0
+questionary>=2.1.1

@@ -8,7 +8,7 @@ from ..utils import get_logger
 
 logger = get_logger(__name__)
 
-LOCALES_DIR = Path(__file__).parent.parent / "locales"
+LOCALES_DIR = Path(__file__).parent / "locales"
 SUPPORTED_LANGUAGES = ("en", "ru")
 
 _instance: Optional["Translator"] = None

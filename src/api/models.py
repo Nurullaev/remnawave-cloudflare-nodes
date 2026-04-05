@@ -34,20 +34,5 @@ class DomainIn(BaseModel):
     zones: List[ZoneIn] = Field(min_length=1)
 
 
-class TelegramNotifyPatch(BaseModel):
-    dns_changes: Optional[bool] = None
-    node_changes: Optional[bool] = None
-    errors: Optional[bool] = None
-    critical: Optional[bool] = None
-    api_changes: Optional[bool] = None
-
-
-class TelegramPatch(BaseModel):
-    enabled: Optional[bool] = None
-    notify: Optional[TelegramNotifyPatch] = None
-
-
 class ConfigPatch(BaseModel):
     check_interval: Optional[int] = Field(default=None, ge=5)
-    log_level: Optional[str] = Field(default=None, pattern="^(DEBUG|INFO|WARNING|ERROR)$")
-    telegram: Optional[TelegramPatch] = None

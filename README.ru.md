@@ -14,6 +14,9 @@
 
 [English](README.md) | Русский
 
+> Настройки логирования, API и Telegram перенесены из `config.yml` в `.env`.
+> См. [Гайд по миграции](docs/MIGRATION.md).
+
 Сервис для автоматического управления DNS-записями Cloudflare в зависимости от состояния нод
 Remnawave (https://docs.rw).
 
@@ -48,20 +51,33 @@ REMNAWAVE_API_KEY=remnawave_api_key
 # Cloudflare (токен с правами DNS Edit)
 CLOUDFLARE_API_TOKEN=cloudflare_api_token
 
-# Telegram (токен от @BotFather)
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-# Chat ID (узнать через @username_to_id_bot)
-TELEGRAM_CHAT_ID=123456789
-# ID топика (для форумов, иначе оставить пустым)
-TELEGRAM_TOPIC_ID=
+# API
+API_ENABLED=false
+API_TOKEN=  # Сгенерировать: openssl rand -hex 32
+API_HOST=0.0.0.0
+API_PORT=8741
+API_DOCS=false
 
+# Telegram-уведомления
+TELEGRAM_ENABLED=false
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_CHAT_ID=123456789
+TELEGRAM_TOPIC_ID=  # ID топика (для форумов, иначе оставить пустым)
+
+# Фильтры уведомлений
+TELEGRAM_NOTIFY_NODE_CHANGES=true
+TELEGRAM_NOTIFY_DNS_CHANGES=true
+TELEGRAM_NOTIFY_ERRORS=true
+TELEGRAM_NOTIFY_CRITICAL=true
+TELEGRAM_NOTIFY_API_CHANGES=true
+
+# Язык уведомлений (en, ru)
+LANGUAGE=ru
 # Часовой пояс и формат времени
 TIMEZONE=UTC
 TIME_FORMAT="%d.%m.%Y %H:%M:%S"
-
-# Токен API-сервера (обязателен при api.enabled: true в config.yml)
-# Сгенерировать: openssl rand -hex 32
-API_TOKEN=
+# Уровень логов (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+LOG_LEVEL=INFO
 ```
 
 Скопируйте [`config.example.yml`](config.example.yml) в `config.yml`:
@@ -93,24 +109,6 @@ domains:
         ips:
           - 13.14.15.16
           - 17.18.19.20
-
-logging:
-  level: INFO # DEBUG, INFO, WARNING, ERROR, CRITICAL
-
-telegram:
-  enabled: false
-  locale: ru  # en, ru
-  notify:
-    node_changes: true
-    dns_changes: true
-    errors: true
-    critical: true
-
-api:
-  enabled: false
-  host: "0.0.0.0"
-  port: 8741
-  docs: false
 ```
 
 ### Корневые (apex) записи домена
@@ -179,34 +177,36 @@ zones:
 
 #### Переменные окружения (.env)
 
-| Переменная             | Описание                          | По умолчанию        | Обязательно        |
-|------------------------|-----------------------------------|---------------------|--------------------|
-| `REMNAWAVE_API_URL`    | Адрес панели Remnawave            | -                   | Да                 |
-| `REMNAWAVE_API_KEY`    | API токен Remnawave               | -                   | Да                 |
-| `CLOUDFLARE_API_TOKEN` | API токен Cloudflare (DNS Edit)   | -                   | Да                 |
-| `TELEGRAM_BOT_TOKEN`   | Токен бота (@BotFather)           | -                   | Нет                |
-| `TELEGRAM_CHAT_ID`     | ID чата для уведомлений           | -                   | Нет                |
-| `TELEGRAM_TOPIC_ID`    | ID топика (для форумов)           | -                   | Нет                |
-| `TIMEZONE`             | Часовой пояс                      | `UTC`               | Нет                |
-| `TIME_FORMAT`          | Формат времени                    | `%d.%m.%Y %H:%M:%S` | Нет                |
-| `API_TOKEN`            | Токен API — строго 64 символа hex | -                   | При включенном API |
+| Переменная                     | Описание                                         | По умолчанию        | Обязательно        |
+|--------------------------------|--------------------------------------------------|---------------------|--------------------|
+| `REMNAWAVE_API_URL`            | Адрес панели Remnawave                           | -                   | Да                 |
+| `REMNAWAVE_API_KEY`            | API токен Remnawave                              | -                   | Да                 |
+| `CLOUDFLARE_API_TOKEN`         | API токен Cloudflare (DNS Edit)                  | -                   | Да                 |
+| `LOG_LEVEL`                    | Уровень логов (`DEBUG` `INFO` `WARNING` `ERROR`) | `INFO`              | Нет                |
+| `API_ENABLED`                  | Включить HTTP API                                | `false`             | Нет                |
+| `API_HOST`                     | Адрес привязки API-сервера                       | `0.0.0.0`           | Нет                |
+| `API_PORT`                     | Порт API-сервера                                 | `8741`              | Нет                |
+| `API_DOCS`                     | Swagger UI по адресу `/api/docs`                 | `false`             | Нет                |
+| `API_TOKEN`                    | Токен API — строго 64 символа hex                | -                   | При включенном API |
+| `TELEGRAM_ENABLED`             | Включить Telegram-уведомления                    | `false`             | Нет                |
+| `TELEGRAM_BOT_TOKEN`           | Токен бота (@BotFather)                          | -                   | Нет                |
+| `TELEGRAM_CHAT_ID`             | ID чата для уведомлений                          | -                   | Нет                |
+| `TELEGRAM_TOPIC_ID`            | ID топика (для форумов)                          | -                   | Нет                |
+| `TELEGRAM_NOTIFY_NODE_CHANGES` | Уведомления об изменении статуса нод             | `true`              | Нет                |
+| `TELEGRAM_NOTIFY_DNS_CHANGES`  | Уведомления об изменениях DNS                    | `true`              | Нет                |
+| `TELEGRAM_NOTIFY_ERRORS`       | Уведомления об ошибках                           | `true`              | Нет                |
+| `TELEGRAM_NOTIFY_CRITICAL`     | Уведомление при падении всех нод                 | `true`              | Нет                |
+| `TELEGRAM_NOTIFY_API_CHANGES`  | Уведомления об изменениях через HTTP API         | `true`              | Нет                |
+| `LANGUAGE`                     | Язык уведомлений (`en`, `ru`)                    | `en`                | Нет                |
+| `TIMEZONE`                     | Часовой пояс                                     | `UTC`               | Нет                |
+| `TIME_FORMAT`                  | Формат времени                                   | `%d.%m.%Y %H:%M:%S` | Нет                |
 
 #### config.yml
 
-| Ключ                           | Описание                                         | По умолчанию | Обязательно |
-|--------------------------------|--------------------------------------------------|--------------|-------------|
-| `remnawave.check-interval`     | Интервал проверки (сек)                          | `30`         | Нет         |
-| `logging.level`                | Уровень логов (`DEBUG` `INFO` `WARNING` `ERROR`) | `INFO`       | Нет         |
-| `telegram.enabled`             | Включить Telegram-уведомления                    | `false`      | Нет         |
-| `telegram.locale`              | Язык уведомлений (`en`, `ru`)                    | `en`         | Нет         |
-| `telegram.notify.node_changes` | Уведомления об изменении статуса нод             | `true`       | Нет         |
-| `telegram.notify.dns_changes`  | Уведомления об изменениях DNS                    | `true`       | Нет         |
-| `telegram.notify.errors`       | Уведомления об ошибках                           | `true`       | Нет         |
-| `telegram.notify.critical`     | Уведомление при падении всех нод                 | `true`       | Нет         |
-| `api.enabled`                  | Включить HTTP API                                | `false`      | Нет         |
-| `api.host`                     | Адрес привязки API-сервера                       | `0.0.0.0`    | Нет         |
-| `api.port`                     | Порт API-сервера                                 | `8741`       | Нет         |
-| `api.docs`                     | Swagger UI по адресу `/api/docs`                 | `false`      | Нет         |
+| Ключ                       | Описание                 | По умолчанию | Обязательно |
+|----------------------------|--------------------------|--------------|-------------|
+| `remnawave.check-interval` | Интервал проверки (сек)  | `30`         | Нет         |
+| `domains`                  | Список доменов и DNS-зон | `[]`         | Да          |
 
 ## Установка
 
@@ -286,13 +286,14 @@ python -m src
 1. Создайте бота через [@BotFather](https://t.me/BotFather)
 2. Узнайте свой chat ID через [@username_to_id_bot](https://t.me/username_to_id_bot)
 3. Добавьте бота в чат
-4. Укажите токен и chat ID в `.env`
-5. Включите уведомления в `config.yml`:
+4. Настройте в `.env`:
 
-```yaml
-telegram:
-  enabled: true
-  locale: ru
+```env
+TELEGRAM_ENABLED=true
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_CHAT_ID=123456789
+TELEGRAM_TOPIC_ID=              # Опционально: для форумов
+LANGUAGE=ru                     # en, ru
 ```
 
 ### Типы уведомлений
@@ -310,15 +311,12 @@ telegram:
 
 ### Фильтрация уведомлений
 
-```yaml
-telegram:
-  enabled: true
-  locale: ru
-  notify:
-    node_changes: true
-    dns_changes: true
-    errors: true
-    critical: true
+```env
+TELEGRAM_NOTIFY_NODE_CHANGES=true   # Статус нод
+TELEGRAM_NOTIFY_DNS_CHANGES=true    # Изменения DNS
+TELEGRAM_NOTIFY_ERRORS=true         # Ошибки
+TELEGRAM_NOTIFY_CRITICAL=true       # Падение всех нод
+TELEGRAM_NOTIFY_API_CHANGES=true    # Изменения через HTTP API
 ```
 
 ## HTTP API
@@ -335,20 +333,14 @@ telegram:
 openssl rand -hex 32
 ```
 
-2. Добавьте в `.env`:
+2. Включите в `.env`:
 
 ```env
+API_ENABLED=true
 API_TOKEN=<сгенерированный токен>
-```
-
-3. Включите в `config.yml`:
-
-```yaml
-api:
-  enabled: true
-  host: "0.0.0.0"
-  port: 8741
-  docs: false
+API_HOST=0.0.0.0
+API_PORT=8741
+API_DOCS=false
 ```
 
 ### Reverse proxy
@@ -402,6 +394,10 @@ docker compose logs -f
 # Ручная установка
 # stdout + logs/app.log
 ```
+
+## Миграция
+
+Обновляетесь со старой версии? См. [Гайд по миграции](docs/MIGRATION.md).
 
 ## Лицензия
 

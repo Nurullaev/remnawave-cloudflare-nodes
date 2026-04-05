@@ -8,7 +8,7 @@ from .cloudflare_dns import CloudflareClient, DNSManager
 from .config import Config
 from .i18n import get_translator
 from .monitoring_service import MonitoringService
-from .remnawave import RemnawaveClient, NodeMonitor
+from .panel import RemnawaveClient, NodeMonitor
 from .telegram import TelegramNotifier, ServiceStarted
 from .utils.logger import setup_logger
 
