@@ -25,22 +25,3 @@ domains:
             address: 100.64.0.2
         ips:                     # Mixed: plain IPs alongside nodes in the same zone
           - 21.22.23.24
-
-logging:
-  level: INFO # DEBUG, INFO, WARNING, ERROR, CRITICAL
-
-api:
-  enabled: false
-  host: "0.0.0.0"
-  port: 8741
-  docs: false  # Swagger UI at /api/docs
-
-telegram:
-  enabled: false
-  locale: en  # en, ru
-  notify:
-    node_changes: true  # Node online/offline
-    dns_changes: true   # DNS record changes
-    errors: true        # Error alerts
-    critical: true      # All nodes down alert
-    api_changes: true   # HTTP API config changes

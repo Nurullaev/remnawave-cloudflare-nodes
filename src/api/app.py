@@ -71,25 +71,6 @@ def create_app(config: Config, notifier: TelegramNotifier, monitoring_service: "
             config.update_check_interval(body.check_interval)
             changes.append(f"check_interval={body.check_interval}")
 
-        if body.log_level is not None:
-            config.update_log_level(body.log_level)
-            changes.append(f"log_level={body.log_level}")
-
-        if body.telegram is not None:
-            tg = body.telegram
-            kwargs = {}
-            if tg.enabled is not None:
-                kwargs["enabled"] = tg.enabled
-                changes.append(f"telegram.enabled={tg.enabled}")
-            if tg.notify is not None:
-                notify = {k: v for k, v in tg.notify.model_dump().items() if v is not None}
-                if notify:
-                    kwargs["notify"] = notify
-                    for k, v in notify.items():
-                        changes.append(f"telegram.notify.{k}={v}")
-            if kwargs:
-                config.update_telegram(**kwargs)
-
         if changes:
             logger.info(f"API: updated config [{', '.join(changes)}] [from {ip}]")
             notifier.notify_api_config_updated(ApiConfigUpdated(changes=changes, client_ip=ip))

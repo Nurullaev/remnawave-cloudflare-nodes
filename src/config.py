@@ -6,6 +6,15 @@ from typing import Any, Dict
 import yaml
 from dotenv import load_dotenv
 
+_API_TOKEN_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _env_bool(key: str, default: bool = False) -> bool:
+    value = os.getenv(key, "").strip().lower()
+    if not value:
+        return default
+    return value in ("true", "1", "yes")
+
 
 class Config:
     def __init__(self, config_path: str = "config.yml"):
@@ -59,6 +68,8 @@ class Config:
 
         return value
 
+    # --- Environment variables ---
+
     @property
     def remnawave_url(self) -> str:
         return os.getenv("REMNAWAVE_API_URL", "")
@@ -72,24 +83,35 @@ class Config:
         return os.getenv("CLOUDFLARE_API_TOKEN", "")
 
     @property
-    def check_interval(self) -> int:
-        return self.get("remnawave.check-interval", 30)
-
-    @property
-    def domains(self) -> list:
-        return self.get("domains") or []
-
-    @property
-    def logging_config(self) -> dict:
-        return self.get("logging", {})
-
-    @property
     def log_level(self) -> str:
-        return self.get("logging.level", "INFO")
+        return os.getenv("LOG_LEVEL", "INFO")
+
+    @property
+    def api_enabled(self) -> bool:
+        return _env_bool("API_ENABLED")
+
+    @property
+    def api_host(self) -> str:
+        return os.getenv("API_HOST", "0.0.0.0")
+
+    @property
+    def api_port(self) -> int:
+        try:
+            return int(os.getenv("API_PORT", "8741"))
+        except ValueError:
+            return 8741
+
+    @property
+    def api_docs_enabled(self) -> bool:
+        return _env_bool("API_DOCS")
+
+    @property
+    def api_token(self) -> str:
+        return os.getenv("API_TOKEN", "")
 
     @property
     def telegram_enabled(self) -> bool:
-        return self.get("telegram.enabled", False)
+        return _env_bool("TELEGRAM_ENABLED")
 
     @property
     def telegram_bot_token(self) -> str:
@@ -123,23 +145,33 @@ class Config:
 
     @property
     def telegram_notify_dns_changes(self) -> bool:
-        return self.get("telegram.notify.dns_changes", True)
+        return _env_bool("TELEGRAM_NOTIFY_DNS_CHANGES", default=True)
 
     @property
     def telegram_notify_node_changes(self) -> bool:
-        return self.get("telegram.notify.node_changes", True)
+        return _env_bool("TELEGRAM_NOTIFY_NODE_CHANGES", default=True)
 
     @property
     def telegram_notify_errors(self) -> bool:
-        return self.get("telegram.notify.errors", True)
+        return _env_bool("TELEGRAM_NOTIFY_ERRORS", default=True)
 
     @property
     def telegram_notify_critical(self) -> bool:
-        return self.get("telegram.notify.critical", True)
+        return _env_bool("TELEGRAM_NOTIFY_CRITICAL", default=True)
 
     @property
     def telegram_notify_api_changes(self) -> bool:
-        return self.get("telegram.notify.api_changes", True)
+        return _env_bool("TELEGRAM_NOTIFY_API_CHANGES", default=True)
+
+    # --- YAML config ---
+
+    @property
+    def check_interval(self) -> int:
+        return self.get("remnawave.check-interval", 30)
+
+    @property
+    def domains(self) -> list:
+        return self.get("domains") or []
 
     def reload(self) -> None:
         self._config = self._load_config()
@@ -148,19 +180,6 @@ class Config:
 
     def update_check_interval(self, interval: int) -> None:
         self._raw_config.setdefault("remnawave", {})["check-interval"] = interval
-        self._save()
-
-    def update_log_level(self, level: str) -> None:
-        self._raw_config.setdefault("logging", {})["level"] = level
-        self._save()
-
-    def update_telegram(self, **kwargs) -> None:
-        tg = self._raw_config.setdefault("telegram", {})
-        for key, value in kwargs.items():
-            if key == "notify" and isinstance(value, dict):
-                tg.setdefault("notify", {}).update(value)
-            else:
-                tg[key] = value
         self._save()
 
     def add_domain(self, domain: str, zones: list) -> None:
@@ -215,30 +234,6 @@ class Config:
                 raise ValueError(f"Zone '{zone_name}' not found for '{domain}'")
         raise ValueError(f"Domain '{domain}' not found")
 
-    # --- API config properties ---
-
-    @property
-    def api_enabled(self) -> bool:
-        return self.get("api.enabled", False)
-
-    @property
-    def api_host(self) -> str:
-        return self.get("api.host", "0.0.0.0")
-
-    @property
-    def api_port(self) -> int:
-        return self.get("api.port", 8741)
-
-    @property
-    def api_docs_enabled(self) -> bool:
-        return self.get("api.docs", False)
-
-    @property
-    def api_token(self) -> str:
-        return os.getenv("API_TOKEN", "")
-
-    _API_TOKEN_RE = re.compile(r"^[0-9a-f]{64}$")
-
     def validate(self) -> None:
         missing = []
         if not self.remnawave_url:
@@ -254,10 +249,10 @@ class Config:
             token = self.api_token
             if not token:
                 raise ValueError(
-                    "API_TOKEN is required when api.enabled is true. "
+                    "API_TOKEN is required when API_ENABLED is true. "
                     "Generate one with: openssl rand -hex 32"
                 )
-            if not self._API_TOKEN_RE.match(token):
+            if not _API_TOKEN_RE.match(token):
                 raise ValueError(
                     "API_TOKEN must be a 64-character lowercase hex string. "
                     "Generate one with: openssl rand -hex 32"
