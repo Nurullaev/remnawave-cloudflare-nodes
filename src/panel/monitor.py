@@ -1,38 +1,22 @@
-from typing import List, Optional
-from uuid import UUID
+from typing import List
+
+from remnawave.models import NodeResponseDto
 
 from .client import RemnawaveClient
 from ..utils.logger import get_logger
 
 
 class NodeStatus:
-    def __init__(
-            self,
-            name: str,
-            address: str,
-            is_healthy: bool,
-            is_connected: bool,
-            is_disabled: bool,
-            xray_version: Optional[str],
-            xray_uptime: Optional[float] = None,
-            port: Optional[int] = None,
-            users_online: int = 0,
-            uuid: Optional[str] = None,
-    ):
-        self.name = name
-        self.address = address
+    def __init__(self, node: NodeResponseDto, is_healthy: bool):
+        self.node = node
         self.is_healthy = is_healthy
-        self.is_connected = is_connected
-        self.is_disabled = is_disabled
-        self.xray_version = xray_version
-        self.xray_uptime = xray_uptime
-        self.port = port
-        self.users_online = users_online
-        self.uuid = uuid
+
+    def __getattr__(self, name: str):
+        return getattr(self.node, name)
 
     def __repr__(self):
         status = "healthy" if self.is_healthy else "unhealthy"
-        return f"NodeStatus(name={self.name}, address={self.address}, status={status})"
+        return f"NodeStatus(name={self.node.name}, address={self.node.address}, status={status})"
 
 
 class NodeMonitor:
@@ -47,16 +31,8 @@ class NodeMonitor:
 
             for node in nodes:
                 status = NodeStatus(
-                    name=node.name,
-                    address=node.address,
+                    node=node,
                     is_healthy=self.client.is_node_healthy(node),
-                    is_connected=node.is_connected,
-                    is_disabled=node.is_disabled,
-                    xray_version=node.xray_version,
-                    xray_uptime=node.xray_uptime,
-                    port=node.port,
-                    users_online=node.users_online or 0,
-                    uuid=str(node.uuid) if isinstance(node.uuid, UUID) else node.uuid,
                 )
                 node_statuses.append(status)
 
