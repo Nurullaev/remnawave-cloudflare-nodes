@@ -1,6 +1,6 @@
 from typing import List
 
-from remnawave.models import NodeResponseDto
+from remnawave.models import NodeResponseDto, UpdateHostRequestDto
 
 from remnawave import RemnawaveSDK
 from ..utils.logger import get_logger
@@ -25,6 +25,19 @@ class RemnawaveClient:
         except Exception as e:
             self.logger.error(f"Error fetching nodes: {e}")
             raise
+
+    async def get_hosts(self) -> list:
+        try:
+            response = await self.sdk.hosts.get_all_hosts()
+            return response.root if hasattr(response, "root") else []
+        except Exception as e:
+            self.logger.error(f"Error fetching hosts: {e}")
+            raise
+
+    async def set_host_disabled(self, uuid: str, is_disabled: bool) -> None:
+        await self.sdk.hosts.update_host(
+            body=UpdateHostRequestDto(uuid=uuid, is_disabled=is_disabled)
+        )
 
     @staticmethod
     def is_node_connected(node: NodeResponseDto) -> bool:
