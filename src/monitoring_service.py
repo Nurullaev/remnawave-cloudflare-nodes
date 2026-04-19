@@ -28,6 +28,7 @@ class MonitoringService:
         self._zone_id_cache: Dict[str, str] = {}
         self._previous_node_states: Dict[str, bool] = {}
         self._previous_all_down: bool = False
+        self._previous_dns_counts: Dict[str, int] = {}
 
     async def initialize_and_print_zones(self) -> None:
         self.logger.info("Initializing zones")
@@ -96,7 +97,16 @@ class MonitoringService:
             self._check_node_transitions(configured_nodes, nodes_by_address)
             self._check_critical_state(configured_nodes, unhealthy_nodes)
 
-            await self._sync_all_zones(nodes_by_address)
+            try:
+                hosts = await self.node_monitor.client.get_hosts()
+                hosts_by_address: Dict[str, list] = {}
+                for host in hosts:
+                    hosts_by_address.setdefault(host.address, []).append(host)
+            except Exception as e:
+                self.logger.warning(f"Could not fetch hosts, skipping host enable/disable: {e}")
+                hosts_by_address = {}
+
+            await self._sync_all_zones(nodes_by_address, hosts_by_address)
 
             self.logger.info("Health check cycle completed")
 
@@ -115,7 +125,7 @@ class MonitoringService:
                 addresses.add(entry["address"])
         return addresses
 
-    async def _sync_all_zones(self, nodes_by_address: Dict[str, object]) -> None:
+    async def _sync_all_zones(self, nodes_by_address: Dict[str, object], hosts_by_address: Dict[str, list] = None) -> None:
         for zone in self.config.get_all_zones():
             domain = zone["domain"]
 
@@ -133,6 +143,10 @@ class MonitoringService:
                 if node and node.is_healthy:
                     healthy_ips.add(dns_ip)
 
+            full_domain = build_fqdn(zone["name"], domain)
+            healthy_count = len(healthy_ips)
+            prev_count = self._previous_dns_counts.get(full_domain)
+
             await self.dns_manager.sync_dns_records(
                 zone_id=zone_id,
                 zone_name=zone["name"],
@@ -142,6 +156,14 @@ class MonitoringService:
                 ttl=zone["ttl"],
                 proxied=zone["proxied"],
             )
+
+            if prev_count is not None and hosts_by_address:
+                if prev_count > 0 and healthy_count == 0:
+                    await self._set_hosts_disabled(full_domain, True, hosts_by_address)
+                elif prev_count == 0 and healthy_count > 0:
+                    await self._set_hosts_disabled(full_domain, False, hosts_by_address)
+
+            self._previous_dns_counts[full_domain] = healthy_count
 
     async def _get_zone_id(self, domain: str) -> Optional[str]:
         if domain in self._zone_id_cache:
@@ -239,6 +261,18 @@ class MonitoringService:
             )
 
             self._previous_node_states[node.address] = curr_healthy
+
+    async def _set_hosts_disabled(self, fqdn: str, is_disabled: bool, hosts_by_address: Dict[str, list]) -> None:
+        matching = hosts_by_address.get(fqdn, [])
+        if not matching:
+            return
+        action = "Disabling" if is_disabled else "Enabling"
+        for host in matching:
+            try:
+                await self.node_monitor.client.set_host_disabled(str(host.uuid), is_disabled)
+                self.logger.info(f"{action} Remnawave host '{host.remark}' ({fqdn})")
+            except Exception as e:
+                self.logger.error(f"Failed to {'disable' if is_disabled else 'enable'} host '{host.remark}' ({fqdn}): {e}")
 
     async def cleanup_zone(self, domain: str, zone_name: str) -> None:
         zone_id = await self._get_zone_id(domain)
