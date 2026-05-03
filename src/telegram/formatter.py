@@ -1,5 +1,5 @@
 from .events import (
-    NodeStateChange, NodeStats, DNSChange, DNSError,
+    NodeStateChange, NodeStats, HostStateChange, DNSChange, DNSError,
     CriticalState, CriticalStateRecovered, HealthCheckError,
     ServiceStarted,
     ApiConfigUpdated, ApiDomainAdded, ApiDomainRemoved,
@@ -54,6 +54,16 @@ class MessageFormatter:
                 reason=change.reason or self._i18n.get("node-reason-unknown"),
                 stats=stats_str,
             )
+
+    def format_host_state_change(self, change: HostStateChange) -> str:
+        nodes_str = ", ".join(change.node_names) if change.node_names else self._i18n.get("node-reason-unknown")
+        msg_id = "host-disabled" if change.is_disabled else "host-enabled"
+        return self._i18n.get(
+            msg_id,
+            remark=change.host_remark,
+            address=change.host_address,
+            nodes=nodes_str,
+        )
 
     def format_dns_change(self, change: DNSChange) -> str:
         msg_id = "dns-record-added" if change.action == "added" else "dns-record-removed"
