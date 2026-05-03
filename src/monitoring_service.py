@@ -29,6 +29,7 @@ class MonitoringService:
         self._previous_node_states: Dict[str, bool] = {}
         self._previous_all_down: bool = False
         self._previous_dns_counts: Dict[str, int] = {}
+        self._previous_extra_host_any_healthy: Dict[str, bool] = {}
 
     async def initialize_and_print_zones(self) -> None:
         self.logger.info("Initializing zones")
@@ -104,9 +105,18 @@ class MonitoringService:
                     hosts_by_address.setdefault(host.address, []).append(host)
             except Exception as e:
                 self.logger.warning(f"Could not fetch hosts, skipping host enable/disable: {e}")
+                hosts = []
                 hosts_by_address = {}
 
             await self._sync_all_zones(nodes_by_address, hosts_by_address)
+
+            if hosts:
+                nodes_by_uuid = {
+                    str(getattr(n, "uuid", "")): n
+                    for n in all_nodes
+                    if getattr(n, "uuid", None) is not None
+                }
+                await self._sync_extra_hosts(hosts, nodes_by_uuid)
 
             self.logger.info("Health check cycle completed")
 
@@ -273,6 +283,55 @@ class MonitoringService:
                 self.logger.info(f"{action} Remnawave host '{host.remark}' ({fqdn})")
             except Exception as e:
                 self.logger.error(f"Failed to {'disable' if is_disabled else 'enable'} host '{host.remark}' ({fqdn}): {e}")
+
+    def _get_cf_managed_addresses(self) -> Set[str]:
+        return {build_fqdn(zone["name"], zone["domain"]) for zone in self.config.get_all_zones()}
+
+    async def _sync_extra_hosts(self, hosts: list, nodes_by_uuid: Dict[str, object]) -> None:
+        cf_addresses = self._get_cf_managed_addresses()
+        for host in hosts:
+            if host.address in cf_addresses:
+                continue
+
+            bound_uuids = [str(u) for u in (getattr(host, "nodes", None) or [])]
+            bound_nodes = [nodes_by_uuid[u] for u in bound_uuids if u in nodes_by_uuid]
+            if not bound_nodes:
+                continue
+
+            any_healthy = any(n.is_healthy for n in bound_nodes)
+            host_uuid = str(host.uuid)
+            prev = self._previous_extra_host_any_healthy.get(host_uuid)
+            self._previous_extra_host_any_healthy[host_uuid] = any_healthy
+
+            if prev is None or prev == any_healthy:
+                continue
+
+            node_names = [getattr(n, "name", "") or getattr(n, "address", "") for n in bound_nodes]
+            await self._set_host_disabled(host, not any_healthy, node_names)
+
+    async def _set_host_disabled(self, host, is_disabled: bool, node_names: List[str]) -> None:
+        action = "Disabling" if is_disabled else "Enabling"
+        try:
+            await self.node_monitor.client.set_host_disabled(str(host.uuid), is_disabled)
+            self.logger.info(f"{action} Remnawave host '{host.remark}' (address: {host.address})")
+        except Exception as e:
+            self.logger.error(
+                f"Failed to {'disable' if is_disabled else 'enable'} host '{host.remark}' "
+                f"(address: {host.address}): {e}"
+            )
+            return
+
+        if self.notifier and self.config.telegram_notify_node_changes:
+            from .telegram import HostStateChange
+
+            self.notifier.notify_host_state_change(
+                HostStateChange(
+                    host_remark=host.remark,
+                    host_address=host.address,
+                    is_disabled=is_disabled,
+                    node_names=node_names,
+                )
+            )
 
     async def cleanup_zone(self, domain: str, zone_name: str) -> None:
         zone_id = await self._get_zone_id(domain)

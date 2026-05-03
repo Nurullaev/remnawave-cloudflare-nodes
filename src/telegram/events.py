@@ -30,6 +30,14 @@ class NodeStateChange:
 
 
 @dataclass
+class HostStateChange:
+    host_remark: str
+    host_address: str
+    is_disabled: bool
+    node_names: List[str]
+
+
+@dataclass
 class DNSChange:
     domain: str
     zone_name: str

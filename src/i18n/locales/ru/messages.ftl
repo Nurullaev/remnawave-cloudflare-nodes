@@ -19,6 +19,15 @@ node-became-unhealthy = <b>❌ Нода офлайн</b>
 
     { $stats }
 
+# Изменения статуса хостов
+host-disabled = <b>🚫 Хост отключён</b>
+    { $remark } ({ $address }) отключён — все привязанные ноды недоступны.
+    Ноды: { $nodes }
+
+host-enabled = <b>✅ Хост включён</b>
+    { $remark } ({ $address }) снова включён.
+    Ноды: { $nodes }
+
 # Операции DNS
 dns-record-added = <b>📝 DNS обновлен</b>
     Добавлен { $ip } → { $domain }

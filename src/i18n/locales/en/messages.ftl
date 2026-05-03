@@ -19,6 +19,15 @@ node-became-unhealthy = <b>❌ Node Offline</b>
 
     { $stats }
 
+# Host status changes
+host-disabled = <b>🚫 Host Disabled</b>
+    { $remark } ({ $address }) disabled — all attached nodes are unavailable.
+    Nodes: { $nodes }
+
+host-enabled = <b>✅ Host Enabled</b>
+    { $remark } ({ $address }) is back online.
+    Nodes: { $nodes }
+
 # DNS operations
 dns-record-added = <b>📝 DNS Updated</b>
     Added { $ip } → { $domain }
