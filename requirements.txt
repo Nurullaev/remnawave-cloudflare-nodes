@@ -1,5 +1,5 @@
 python-dotenv>=1.2.2
-remnawave>=2.7.0
+remnawave>=2.8.0
 cloudflare>=4.3.1
 pyyaml>=6.0.3
 aiogram>=3.26.0
